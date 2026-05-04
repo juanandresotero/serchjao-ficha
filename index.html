@@ -349,18 +349,23 @@
 </form>
 
 <script>
-  // Leer params del agente: ?agente=+598... &nombre=Juan
+  // Leer params del agente: ?agente=+598... &agenteNombre=Juan
+  // (Antes usábamos `nombre` para el agente, pero chocaba con el `nombre`
+  //  que envía el cliente en su respuesta — pre-llenaba el campo del cliente
+  //  con el nombre del agente. Ahora usamos `agenteNombre`.)
   const params = new URLSearchParams(window.location.search);
   const agente = params.get('agente') || '';
-  const nombreAgente = params.get('nombre') || '';
+  const nombreAgente = params.get('agenteNombre') || '';
 
-  // Detectar si la URL tiene datos llenos (modo "ver ficha" cuando el agente
-  // clickea el link que le mandó el cliente). Detectamos por presencia de
-  // params específicos del cliente (no del agente).
-  const tieneRespuesta = params.has('nombre') ||
-                         params.has('operacion') ||
+  // Detectar si la URL tiene datos llenos del CLIENTE (modo "ver ficha"
+  // cuando el agente clickea el link que le mandó el cliente). Solo se
+  // considera respuesta si hay params del FORM, no del agente.
+  const tieneRespuesta = params.has('operacion') ||
                          params.has('tipo') ||
-                         params.has('barrios');
+                         params.has('barrios') ||
+                         params.has('dorm') ||
+                         params.has('presMin') ||
+                         params.has('presMax');
 
   // En modo "ver ficha" pre-llenamos los campos con los datos que llegaron.
   // Esto sirve para que el agente verifique antes de copiar el link.
