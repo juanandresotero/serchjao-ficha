@@ -210,10 +210,23 @@
     <label>¿Qué buscás?</label>
     <div class="checkbox-group">
       <label class="checkbox-item">
-        <input type="radio" name="operacion" value="venta" required> Comprar
+        <input type="radio" name="operacion" value="compra" required onchange="actualizarVisibilidadAlquiler()"> Comprar
       </label>
       <label class="checkbox-item">
-        <input type="radio" name="operacion" value="alquiler"> Alquilar
+        <input type="radio" name="operacion" value="alquiler" onchange="actualizarVisibilidadAlquiler()"> Alquilar
+      </label>
+    </div>
+  </div>
+
+  <!-- Visible solo cuando elige ALQUILAR -->
+  <div class="card solo-alquiler" id="cardMoneda" style="display:none;">
+    <label>Moneda del alquiler</label>
+    <div class="checkbox-group">
+      <label class="checkbox-item">
+        <input type="radio" name="moneda" value="pesos" onchange="actualizarLabelPresupuesto()"> Pesos ($)
+      </label>
+      <label class="checkbox-item">
+        <input type="radio" name="moneda" value="dolares" onchange="actualizarLabelPresupuesto()"> Dólares (U$S)
       </label>
     </div>
   </div>
@@ -242,7 +255,7 @@
   </div>
 
   <div class="card">
-    <label>Presupuesto (USD)</label>
+    <label id="lblPresupuesto">Presupuesto (USD)</label>
     <div class="row">
       <div>
         <div class="hint">Mínimo</div>
@@ -313,7 +326,8 @@
     </div>
   </div>
 
-  <div class="card">
+  <!-- Forma de pago: solo si COMPRA -->
+  <div class="card solo-compra" id="cardMetodo">
     <label>Forma de pago</label>
     <div class="checkbox-group">
       <label class="checkbox-item">
@@ -324,6 +338,23 @@
       </label>
       <label class="checkbox-item">
         <input type="radio" name="metodo" value="indistinto"> Las dos
+      </label>
+    </div>
+  </div>
+
+  <!-- Garantías: solo si ALQUILER. Multi-select. -->
+  <div class="card solo-alquiler" id="cardGarantias" style="display:none;">
+    <label>Garantías que tenés disponibles</label>
+    <div class="hint">Tildá las que tengas. Solo descartamos propiedades que claramente NO acepten ninguna de estas.</div>
+    <div class="checkbox-group">
+      <label class="checkbox-item">
+        <input type="checkbox" name="garantia" value="anda"> ANDA
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="garantia" value="contaduria"> Contaduría
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="garantia" value="aseguradora"> Aseguradora
       </label>
     </div>
   </div>
@@ -374,7 +405,9 @@
   function aplicarParamsAlForm() {
     if (params.has('nombre')) document.getElementById('nombre').value = params.get('nombre');
     if (params.has('operacion')) {
-      const v = params.get('operacion');
+      // Compat: links viejos pueden venir con "venta" — los mapeamos a "compra"
+      let v = params.get('operacion');
+      if (v === 'venta') v = 'compra';
       const r = document.querySelector(`input[name="operacion"][value="${v}"]`);
       if (r) r.checked = true;
     }
@@ -416,8 +449,22 @@
       const r = document.querySelector(`input[name="metodo"][value="${v}"]`);
       if (r) r.checked = true;
     }
+    if (params.has('moneda')) {
+      const v = params.get('moneda');
+      const r = document.querySelector(`input[name="moneda"][value="${v}"]`);
+      if (r) r.checked = true;
+    }
+    if (params.has('garantias')) {
+      const lista = params.get('garantias').split(',').map(s => s.trim()).filter(s => s);
+      lista.forEach(g => {
+        const c = document.querySelector(`input[name="garantia"][value="${g}"]`);
+        if (c) c.checked = true;
+      });
+    }
     if (params.has('pedidos')) document.getElementById('pedidos').value = params.get('pedidos');
     if (params.has('link'))    document.getElementById('link').value = params.get('link');
+    // Una vez aplicados los params, ajustamos visibilidad alquiler/compra
+    actualizarVisibilidadAlquiler();
   }
 
   if (nombreAgente) {
@@ -474,6 +521,45 @@
     ).join('');
   }
 
+  /**
+   * Muestra/oculta secciones que dependen de si eligió ALQUILER o COMPRA.
+   * Se llama cuando cambia la operación.
+   */
+  function actualizarVisibilidadAlquiler() {
+    const op = document.querySelector('input[name="operacion"]:checked');
+    const esAlquiler = op && op.value === 'alquiler';
+    const esCompra = op && op.value === 'compra';
+    document.querySelectorAll('.solo-alquiler').forEach(el => {
+      el.style.display = esAlquiler ? '' : 'none';
+    });
+    document.querySelectorAll('.solo-compra').forEach(el => {
+      el.style.display = esCompra ? '' : 'none';
+    });
+    actualizarLabelPresupuesto();
+  }
+
+  /**
+   * El label del presupuesto cambia según la operación y la moneda elegida:
+   * - Compra: "(USD)"
+   * - Alquiler + pesos: "($)"
+   * - Alquiler + dólares: "(U$S)"
+   * - Alquiler sin moneda: sin sufijo
+   */
+  function actualizarLabelPresupuesto() {
+    const op = document.querySelector('input[name="operacion"]:checked');
+    const moneda = document.querySelector('input[name="moneda"]:checked');
+    const lbl = document.getElementById('lblPresupuesto');
+    if (!op || op.value === 'compra') {
+      lbl.textContent = 'Presupuesto (USD)';
+    } else if (moneda && moneda.value === 'pesos') {
+      lbl.textContent = 'Presupuesto ($ pesos)';
+    } else if (moneda && moneda.value === 'dolares') {
+      lbl.textContent = 'Presupuesto (U$S)';
+    } else {
+      lbl.textContent = 'Presupuesto del alquiler';
+    }
+  }
+
   function recolectarDatos() {
     const tipos = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
       .map(c => c.value);
@@ -485,12 +571,17 @@
     const op = document.querySelector('input[name="operacion"]:checked');
     const cochera = document.querySelector('input[name="cochera"]:checked');
     const metodo = document.querySelector('input[name="metodo"]:checked');
+    const moneda = document.querySelector('input[name="moneda"]:checked');
+    const garantias = Array.from(document.querySelectorAll('input[name="garantia"]:checked'))
+      .map(c => c.value)
+      .join(",");
 
     return {
       nombre: document.getElementById('nombre').value.trim(),
       operacion: op ? op.value : "",
       tipo: tipoStr,
       barrios: barriosArr.join(", "),
+      moneda: moneda ? moneda.value : "",
       presupuestoMin: leerMiles('presupuestoMin'),
       presupuestoMax: leerMiles('presupuestoMax'),
       dormitorios: document.getElementById('dormitorios').value.trim(),
@@ -501,6 +592,7 @@
       metrosTerrMin: document.getElementById('metrosTerrMin').value.trim(),
       metrosTerrMax: document.getElementById('metrosTerrMax').value.trim(),
       metodo: metodo ? metodo.value : "",
+      garantias: garantias,
       pedidos: document.getElementById('pedidos').value.trim(),
       link: document.getElementById('link').value.trim()
     };
@@ -529,6 +621,8 @@
     if (d.metrosTerrMin)  params.set('mTerrMin', d.metrosTerrMin);
     if (d.metrosTerrMax)  params.set('mTerrMax', d.metrosTerrMax);
     if (d.metodo)         params.set('metodo', d.metodo);
+    if (d.moneda)         params.set('moneda', d.moneda);
+    if (d.garantias)      params.set('garantias', d.garantias);
     if (d.pedidos)        params.set('pedidos', d.pedidos);
     if (d.link)           params.set('link', d.link);
     return baseUrl + '?' + params.toString();
@@ -559,6 +653,10 @@
   // Si la URL trae datos, pre-llenamos el form (modo "ver ficha del cliente")
   if (tieneRespuesta) {
     aplicarParamsAlForm();
+  } else {
+    // Form vacío arrancando: forzar visibilidad inicial (todo oculto hasta
+    // que elija operación)
+    actualizarVisibilidadAlquiler();
   }
 </script>
 
