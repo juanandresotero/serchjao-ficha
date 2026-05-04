@@ -339,24 +339,79 @@
   </div>
 
   <div class="submit-area">
-    <button type="button" class="primary" onclick="enviarPorWhatsApp()">📱 Mandar al agente por WhatsApp</button>
-    <button type="button" class="secondary" onclick="descargarComoArchivo()">📄 Descargar como archivo</button>
+    <button type="button" class="primary" onclick="enviarPorWhatsApp()">📱 Mandar al agente</button>
   </div>
 
   <p class="footer-note">
-    Cuando termines, mandanos la ficha por cualquiera de las dos opciones.
-    Vamos a buscarte propiedades enseguida.
+    Cuando termines, te abre WhatsApp con un mensaje listo. Solo tocá enviar.
   </p>
 
 </form>
 
 <script>
-  // Leer params: ?agente=+598... &nombre=Juan
+  // Leer params del agente: ?agente=+598... &nombre=Juan
   const params = new URLSearchParams(window.location.search);
   const agente = params.get('agente') || '';
   const nombreAgente = params.get('nombre') || '';
+
+  // Detectar si la URL tiene datos llenos (modo "ver ficha" cuando el agente
+  // clickea el link que le mandó el cliente). Detectamos por presencia de
+  // params específicos del cliente (no del agente).
+  const tieneRespuesta = params.has('nombre') ||
+                         params.has('operacion') ||
+                         params.has('tipo') ||
+                         params.has('barrios');
+
+  // En modo "ver ficha" pre-llenamos los campos con los datos que llegaron.
+  // Esto sirve para que el agente verifique antes de copiar el link.
+  function aplicarParamsAlForm() {
+    if (params.has('nombre')) document.getElementById('nombre').value = params.get('nombre');
+    if (params.has('operacion')) {
+      const v = params.get('operacion');
+      const r = document.querySelector(`input[name="operacion"][value="${v}"]`);
+      if (r) r.checked = true;
+    }
+    if (params.has('tipo')) {
+      const v = params.get('tipo');
+      if (v === 'ambas' || v === 'casa') {
+        const c = document.querySelector('input[name="tipo"][value="casa"]'); if (c) c.checked = true;
+      }
+      if (v === 'ambas' || v === 'apto') {
+        const c = document.querySelector('input[name="tipo"][value="apto"]'); if (c) c.checked = true;
+      }
+    }
+    if (params.has('barrios')) {
+      const lista = params.get('barrios').split(',').map(s => s.trim()).filter(s => s);
+      lista.forEach(b => barriosArr.push(b));
+      renderBarrios();
+    }
+    if (params.has('presMin')) document.getElementById('presupuestoMin').value = params.get('presMin');
+    if (params.has('presMax')) document.getElementById('presupuestoMax').value = params.get('presMax');
+    if (params.has('dorm'))    document.getElementById('dormitorios').value = params.get('dorm');
+    if (params.has('banos'))   document.getElementById('banos').value = params.get('banos');
+    if (params.has('cochera')) {
+      const v = params.get('cochera');
+      const r = document.querySelector(`input[name="cochera"][value="${v}"]`);
+      if (r) r.checked = true;
+    }
+    if (params.has('mCubMin'))  document.getElementById('metrosCubMin').value = params.get('mCubMin');
+    if (params.has('mCubMax'))  document.getElementById('metrosCubMax').value = params.get('mCubMax');
+    if (params.has('mTerrMin')) document.getElementById('metrosTerrMin').value = params.get('mTerrMin');
+    if (params.has('mTerrMax')) document.getElementById('metrosTerrMax').value = params.get('mTerrMax');
+    if (params.has('metodo')) {
+      const v = params.get('metodo');
+      const r = document.querySelector(`input[name="metodo"][value="${v}"]`);
+      if (r) r.checked = true;
+    }
+    if (params.has('pedidos')) document.getElementById('pedidos').value = params.get('pedidos');
+    if (params.has('link'))    document.getElementById('link').value = params.get('link');
+  }
+
   if (nombreAgente) {
     document.getElementById('agenteNombre').textContent = nombreAgente;
+  } else if (tieneRespuesta) {
+    document.getElementById('agenteInfo').innerHTML =
+      '<strong>Vista del agente</strong> — esta es la ficha que llenó tu cliente. Copiá el link y pegalo en SerchJAO.';
   } else {
     document.getElementById('agenteInfo').style.display = 'none';
   }
@@ -419,43 +474,32 @@
     };
   }
 
-  function construirTexto(d) {
-    return `🏠 Ficha de búsqueda — SerchJAO
-
-Nombre completo: ${d.nombre}
-
-Operación: ${d.operacion}
-
-Tipo: ${d.tipo}
-
-Barrios deseados: ${d.barrios}
-
-Presupuesto mínimo USD: ${d.presupuestoMin}
-
-Presupuesto máximo USD: ${d.presupuestoMax}
-
-Dormitorios mínimos: ${d.dormitorios}
-
-Baños mínimos: ${d.banos}
-
-Cochera obligatoria: ${d.cochera}
-
-Metros cubiertos mínimos: ${d.metrosCubMin}
-
-Metros cubiertos máximos: ${d.metrosCubMax}
-
-Metros terreno mínimos: ${d.metrosTerrMin}
-
-Metros terreno máximos: ${d.metrosTerrMax}
-
-Método de compra: ${d.metodo}
-
-Pedidos especiales: ${d.pedidos}
-
-Link de propiedad similar: ${d.link}
-
-———
-Mandado desde el formulario SerchJAO`;
+  /**
+   * Construye una URL con todos los datos como query params. La URL apunta de
+   * vuelta a este mismo formulario (para que el agente pueda clickearla y ver
+   * la ficha llena en modo solo-lectura). El agente la copia y la pega en la
+   * app SerchJAO, que parsea los params para autocompletar Nueva Búsqueda.
+   */
+  function construirUrlConDatos(d) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams();
+    if (d.nombre)         params.set('nombre', d.nombre);
+    if (d.operacion)      params.set('operacion', d.operacion);
+    if (d.tipo)           params.set('tipo', d.tipo);
+    if (d.barrios)        params.set('barrios', d.barrios);
+    if (d.presupuestoMin) params.set('presMin', d.presupuestoMin);
+    if (d.presupuestoMax) params.set('presMax', d.presupuestoMax);
+    if (d.dormitorios)    params.set('dorm', d.dormitorios);
+    if (d.banos)          params.set('banos', d.banos);
+    if (d.cochera)        params.set('cochera', d.cochera);
+    if (d.metrosCubMin)   params.set('mCubMin', d.metrosCubMin);
+    if (d.metrosCubMax)   params.set('mCubMax', d.metrosCubMax);
+    if (d.metrosTerrMin)  params.set('mTerrMin', d.metrosTerrMin);
+    if (d.metrosTerrMax)  params.set('mTerrMax', d.metrosTerrMax);
+    if (d.metodo)         params.set('metodo', d.metodo);
+    if (d.pedidos)        params.set('pedidos', d.pedidos);
+    if (d.link)           params.set('link', d.link);
+    return baseUrl + '?' + params.toString();
   }
 
   function validar(d) {
@@ -472,26 +516,17 @@ Mandado desde el formulario SerchJAO`;
       alert("Falta el número del agente en el link. Avisale a tu agente.");
       return;
     }
-    const texto = construirTexto(d);
+    const linkConDatos = construirUrlConDatos(d);
     const numero = agente.replace(/[^0-9]/g, "");
-    const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+    // El cliente manda SOLO el link al agente. Mensaje corto y limpio.
+    const mensaje = `Hola! Te paso mi ficha de búsqueda:\n${linkConDatos}`;
+    const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
     window.open(url, '_blank');
   }
 
-  function descargarComoArchivo() {
-    const d = recolectarDatos();
-    if (!validar(d)) return;
-    const texto = construirTexto(d);
-    const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const nombreArchivo = d.nombre.replace(/[^a-z0-9 ]/gi, '').replace(/\s+/g, '_');
-    a.href = url;
-    a.download = `Ficha-${nombreArchivo || 'cliente'}-SerchJAO.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  // Si la URL trae datos, pre-llenamos el form (modo "ver ficha del cliente")
+  if (tieneRespuesta) {
+    aplicarParamsAlForm();
   }
 </script>
 
