@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficha de búsqueda — SerchJAO</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    line-height: 1.4;
+    padding: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  header {
+    background: #DC1C2E;
+    color: white;
+    padding: 18px 20px;
+    border-radius: 14px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  header p {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 4px;
+  }
+  .card {
+    background: white;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    color: #424245;
+    margin-bottom: 6px;
+  }
+  .hint {
+    font-size: 12px;
+    color: #86868b;
+    margin-bottom: 8px;
+  }
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 16px;
+    border: 1.5px solid #d2d2d7;
+    border-radius: 10px;
+    background: white;
+    color: #1d1d1f;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #DC1C2E;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  .checkbox-group {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1.5px solid #d2d2d7;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    flex: 1;
+    justify-content: center;
+  }
+  .checkbox-item input { width: auto; accent-color: #DC1C2E; }
+  .checkbox-item:has(input:checked) {
+    background: #ffe5e8;
+    border-color: #DC1C2E;
+  }
+  .submit-area {
+    margin-top: 20px;
+    padding: 0;
+  }
+  button {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    font-family: inherit;
+  }
+  button.primary {
+    background: #25D366;
+    color: white;
+  }
+  button.secondary {
+    background: white;
+    color: #DC1C2E;
+    border: 1.5px solid #DC1C2E;
+  }
+  button:active { transform: scale(0.98); }
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: #86868b;
+    margin-top: 18px;
+    padding: 0 12px;
+  }
+  .agente-info {
+    background: #f0f0f3;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #424245;
+    margin-bottom: 14px;
+  }
+  .agente-info strong { color: #1d1d1f; }
+
+  /* Input + boton + para agregar barrios */
+  .barrios-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .barrios-input-row input { flex: 1; }
+  .barrios-input-row button.btn-add {
+    width: 48px;
+    background: #DC1C2E;
+    color: white;
+    font-size: 24px;
+    font-weight: 700;
+    border-radius: 10px;
+    margin: 0;
+    padding: 0;
+  }
+  .barrios-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .barrios-chips:empty { display: none; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffe5e8;
+    color: #DC1C2E;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 14px;
+    border: 1px solid #DC1C2E;
+  }
+  .chip .x {
+    cursor: pointer;
+    font-weight: 700;
+    opacity: 0.7;
+    user-select: none;
+    padding: 0 2px;
+  }
+  .chip .x:hover { opacity: 1; }
+
+  /* Subgrupo de min/max dentro de cada bloque */
+  .subgrupo-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    color: #424245;
+    margin-top: 12px;
+    margin-bottom: 6px;
+  }
+  .subgrupo-titulo:first-of-type { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ficha de búsqueda</h1>
+  <p>Contame qué propiedad buscás</p>
+</header>
+
+<div class="agente-info" id="agenteInfo">
+  Tu agente: <strong id="agenteNombre">tu agente</strong>
+</div>
+
+<form id="fichaForm" onsubmit="return false;">
+
+  <div class="card">
+    <label>Tu nombre completo</label>
+    <input type="text" id="nombre" required placeholder="Ej: María González">
+  </div>
+
+  <div class="card">
+    <label>¿Qué buscás?</label>
+    <div class="checkbox-group">
+      <label class="checkbox-item">
+        <input type="radio" name="operacion" value="venta" required> Comprar
+      </label>
+      <label class="checkbox-item">
+        <input type="radio" name="operacion" value="alquiler"> Alquilar
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Tipo de propiedad</label>
+    <div class="checkbox-group">
+      <label class="checkbox-item">
+        <input type="checkbox" name="tipo" value="casa"> Casa
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="tipo" value="apto"> Apartamento
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Barrios donde te gustaría vivir</label>
+    <div class="hint">Escribí un barrio y tocá <strong>+</strong>. Repetí por cada barrio.</div>
+    <div class="barrios-input-row">
+      <input type="text" id="barrioInput" placeholder="Ej: Pocitos"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();agregarBarrio();}">
+      <button type="button" class="btn-add" onclick="agregarBarrio()">+</button>
+    </div>
+    <div id="barriosChips" class="barrios-chips"></div>
+  </div>
+
+  <div class="card">
+    <label>Presupuesto (USD)</label>
+    <div class="row">
+      <div>
+        <div class="hint">Mínimo</div>
+        <input type="number" id="presupuestoMin" placeholder="Ej: 100000" min="0">
+      </div>
+      <div>
+        <div class="hint">Máximo</div>
+        <input type="number" id="presupuestoMax" placeholder="Ej: 250000" min="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Cantidad mínima</label>
+    <div class="row">
+      <div>
+        <div class="hint">Dormitorios</div>
+        <input type="number" id="dormitorios" placeholder="Ej: 2" min="0">
+      </div>
+      <div>
+        <div class="hint">Baños</div>
+        <input type="number" id="banos" placeholder="Ej: 1" min="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>¿Necesitás cochera obligatoria?</label>
+    <div class="checkbox-group">
+      <label class="checkbox-item">
+        <input type="radio" name="cochera" value="si"> Sí
+      </label>
+      <label class="checkbox-item">
+        <input type="radio" name="cochera" value="no"> No / me da igual
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Metros cubiertos (de la propiedad construida)</label>
+    <div class="hint">Cuánta superficie construida tiene la casa o apartamento. Opcional.</div>
+    <div class="row">
+      <div>
+        <div class="subgrupo-titulo">Mínimo</div>
+        <input type="number" id="metrosCubMin" placeholder="Ej: 80" min="0">
+      </div>
+      <div>
+        <div class="subgrupo-titulo">Máximo</div>
+        <input type="number" id="metrosCubMax" placeholder="Ej: 200" min="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Metros del terreno (terreno completo, incluyendo construido + libre)</label>
+    <div class="hint">Aplica sobre todo a casas. Cuánto terreno total tiene la propiedad. Opcional.</div>
+    <div class="row">
+      <div>
+        <div class="subgrupo-titulo">Mínimo</div>
+        <input type="number" id="metrosTerrMin" placeholder="Ej: 200" min="0">
+      </div>
+      <div>
+        <div class="subgrupo-titulo">Máximo</div>
+        <input type="number" id="metrosTerrMax" placeholder="Ej: 600" min="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Forma de pago</label>
+    <div class="checkbox-group">
+      <label class="checkbox-item">
+        <input type="radio" name="metodo" value="contado"> Contado
+      </label>
+      <label class="checkbox-item">
+        <input type="radio" name="metodo" value="prestamo"> Préstamo
+      </label>
+      <label class="checkbox-item">
+        <input type="radio" name="metodo" value="indistinto"> Las dos
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>¿Algo más que sea importante para vos?</label>
+    <div class="hint">Ej: luminoso, jardín al fondo, sin techo de tejas, cerca de la rambla, etc.</div>
+    <textarea id="pedidos" placeholder="Contame con tus palabras…"></textarea>
+  </div>
+
+  <div class="card">
+    <label>Link de una propiedad similar (opcional)</label>
+    <div class="hint">Si viste alguna que te gusta, pegá el link acá</div>
+    <input type="text" id="link" placeholder="https://...">
+  </div>
+
+  <div class="submit-area">
+    <button type="button" class="primary" onclick="enviarPorWhatsApp()">📱 Mandar al agente por WhatsApp</button>
+    <button type="button" class="secondary" onclick="descargarComoArchivo()">📄 Descargar como archivo</button>
+  </div>
+
+  <p class="footer-note">
+    Cuando termines, mandanos la ficha por cualquiera de las dos opciones.
+    Vamos a buscarte propiedades enseguida.
+  </p>
+
+</form>
+
+<script>
+  // Leer params: ?agente=+598... &nombre=Juan
+  const params = new URLSearchParams(window.location.search);
+  const agente = params.get('agente') || '';
+  const nombreAgente = params.get('nombre') || '';
+  if (nombreAgente) {
+    document.getElementById('agenteNombre').textContent = nombreAgente;
+  } else {
+    document.getElementById('agenteInfo').style.display = 'none';
+  }
+
+  // --- Manejo de barrios como chips ---
+  const barriosArr = [];
+  function agregarBarrio() {
+    const input = document.getElementById('barrioInput');
+    const v = input.value.trim();
+    if (!v) return;
+    if (barriosArr.some(b => b.toLowerCase() === v.toLowerCase())) {
+      input.value = '';
+      return;
+    }
+    barriosArr.push(v);
+    input.value = '';
+    renderBarrios();
+    input.focus();
+  }
+  function quitarBarrio(idx) {
+    barriosArr.splice(idx, 1);
+    renderBarrios();
+  }
+  function renderBarrios() {
+    const cont = document.getElementById('barriosChips');
+    cont.innerHTML = barriosArr.map((b, i) =>
+      `<span class="chip">${b}<span class="x" onclick="quitarBarrio(${i})">×</span></span>`
+    ).join('');
+  }
+
+  function recolectarDatos() {
+    const tipos = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
+      .map(c => c.value);
+    const tipoStr = tipos.length === 2 ? "ambas"
+      : tipos.includes("casa") ? "casa"
+      : tipos.includes("apto") ? "apto"
+      : "";
+
+    const op = document.querySelector('input[name="operacion"]:checked');
+    const cochera = document.querySelector('input[name="cochera"]:checked');
+    const metodo = document.querySelector('input[name="metodo"]:checked');
+
+    return {
+      nombre: document.getElementById('nombre').value.trim(),
+      operacion: op ? op.value : "",
+      tipo: tipoStr,
+      barrios: barriosArr.join(", "),
+      presupuestoMin: document.getElementById('presupuestoMin').value.trim(),
+      presupuestoMax: document.getElementById('presupuestoMax').value.trim(),
+      dormitorios: document.getElementById('dormitorios').value.trim(),
+      banos: document.getElementById('banos').value.trim(),
+      cochera: cochera ? cochera.value : "",
+      metrosCubMin: document.getElementById('metrosCubMin').value.trim(),
+      metrosCubMax: document.getElementById('metrosCubMax').value.trim(),
+      metrosTerrMin: document.getElementById('metrosTerrMin').value.trim(),
+      metrosTerrMax: document.getElementById('metrosTerrMax').value.trim(),
+      metodo: metodo ? metodo.value : "",
+      pedidos: document.getElementById('pedidos').value.trim(),
+      link: document.getElementById('link').value.trim()
+    };
+  }
+
+  function construirTexto(d) {
+    return `🏠 Ficha de búsqueda — SerchJAO
+
+Nombre completo: ${d.nombre}
+
+Operación: ${d.operacion}
+
+Tipo: ${d.tipo}
+
+Barrios deseados: ${d.barrios}
+
+Presupuesto mínimo USD: ${d.presupuestoMin}
+
+Presupuesto máximo USD: ${d.presupuestoMax}
+
+Dormitorios mínimos: ${d.dormitorios}
+
+Baños mínimos: ${d.banos}
+
+Cochera obligatoria: ${d.cochera}
+
+Metros cubiertos mínimos: ${d.metrosCubMin}
+
+Metros cubiertos máximos: ${d.metrosCubMax}
+
+Metros terreno mínimos: ${d.metrosTerrMin}
+
+Metros terreno máximos: ${d.metrosTerrMax}
+
+Método de compra: ${d.metodo}
+
+Pedidos especiales: ${d.pedidos}
+
+Link de propiedad similar: ${d.link}
+
+———
+Mandado desde el formulario SerchJAO`;
+  }
+
+  function validar(d) {
+    if (!d.nombre) { alert("Por favor poné tu nombre"); return false; }
+    if (!d.operacion) { alert("Elegí si querés comprar o alquilar"); return false; }
+    if (!d.tipo) { alert("Elegí casa o apartamento"); return false; }
+    return true;
+  }
+
+  function enviarPorWhatsApp() {
+    const d = recolectarDatos();
+    if (!validar(d)) return;
+    if (!agente) {
+      alert("Falta el número del agente en el link. Avisale a tu agente.");
+      return;
+    }
+    const texto = construirTexto(d);
+    const numero = agente.replace(/[^0-9]/g, "");
+    const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+    window.open(url, '_blank');
+  }
+
+  function descargarComoArchivo() {
+    const d = recolectarDatos();
+    if (!validar(d)) return;
+    const texto = construirTexto(d);
+    const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const nombreArchivo = d.nombre.replace(/[^a-z0-9 ]/gi, '').replace(/\s+/g, '_');
+    a.href = url;
+    a.download = `Ficha-${nombreArchivo || 'cliente'}-SerchJAO.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+</script>
+
+</body>
+</html>
