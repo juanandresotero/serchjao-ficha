@@ -246,11 +246,13 @@
     <div class="row">
       <div>
         <div class="hint">Mínimo</div>
-        <input type="number" id="presupuestoMin" placeholder="Ej: 100000" min="0">
+        <input type="text" inputmode="numeric" id="presupuestoMin"
+               placeholder="Ej: 100.000" oninput="formatearMiles(this)">
       </div>
       <div>
         <div class="hint">Máximo</div>
-        <input type="number" id="presupuestoMax" placeholder="Ej: 250000" min="0">
+        <input type="text" inputmode="numeric" id="presupuestoMax"
+               placeholder="Ej: 250.000" oninput="formatearMiles(this)">
       </div>
     </div>
   </div>
@@ -390,8 +392,14 @@
       lista.forEach(b => barriosArr.push(b));
       renderBarrios();
     }
-    if (params.has('presMin')) document.getElementById('presupuestoMin').value = params.get('presMin');
-    if (params.has('presMax')) document.getElementById('presupuestoMax').value = params.get('presMax');
+    if (params.has('presMin')) {
+      document.getElementById('presupuestoMin').value = params.get('presMin');
+      formatearMiles(document.getElementById('presupuestoMin'));
+    }
+    if (params.has('presMax')) {
+      document.getElementById('presupuestoMax').value = params.get('presMax');
+      formatearMiles(document.getElementById('presupuestoMax'));
+    }
     if (params.has('dorm'))    document.getElementById('dormitorios').value = params.get('dorm');
     if (params.has('banos'))   document.getElementById('banos').value = params.get('banos');
     if (params.has('cochera')) {
@@ -419,6 +427,25 @@
       '<strong>Vista del agente</strong> — esta es la ficha que llenó tu cliente. Copiá el link y pegalo en SerchJAO.';
   } else {
     document.getElementById('agenteInfo').style.display = 'none';
+  }
+
+  /**
+   * Formatea el input numérico mientras el usuario escribe, agregando un
+   * punto cada 3 cifras desde la derecha (ej: 200000 → 200.000).
+   * Llamado en `oninput` de los campos de presupuesto.
+   */
+  function formatearMiles(input) {
+    const raw = input.value.replace(/\D/g, '');
+    if (!raw) {
+      input.value = '';
+      return;
+    }
+    input.value = raw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  /** Lee el valor de un input formateado quitando los puntos. */
+  function leerMiles(id) {
+    return document.getElementById(id).value.replace(/\D/g, '');
   }
 
   // --- Manejo de barrios como chips ---
@@ -464,8 +491,8 @@
       operacion: op ? op.value : "",
       tipo: tipoStr,
       barrios: barriosArr.join(", "),
-      presupuestoMin: document.getElementById('presupuestoMin').value.trim(),
-      presupuestoMax: document.getElementById('presupuestoMax').value.trim(),
+      presupuestoMin: leerMiles('presupuestoMin'),
+      presupuestoMax: leerMiles('presupuestoMax'),
       dormitorios: document.getElementById('dormitorios').value.trim(),
       banos: document.getElementById('banos').value.trim(),
       cochera: cochera ? cochera.value : "",
