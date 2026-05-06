@@ -235,10 +235,10 @@
     <label>Tipo de propiedad</label>
     <div class="checkbox-group">
       <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="casa"> Casa
+        <input type="checkbox" name="tipo" value="casa" onchange="actualizarVisibilidadAlquiler()"> Casa
       </label>
       <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="apto"> Apartamento
+        <input type="checkbox" name="tipo" value="apto" onchange="actualizarVisibilidadAlquiler()"> Apartamento
       </label>
     </div>
   </div>
@@ -359,6 +359,13 @@
     </div>
   </div>
 
+  <!-- Gastos comunes: solo si ALQUILER + APTO -->
+  <div class="card solo-alquiler-apto" id="cardGastosComunes" style="display:none;">
+    <label>Gastos comunes máximo (UYU)</label>
+    <div class="hint">Si la propiedad tiene GC mayor a este valor (con margen del 3%), se descarta.</div>
+    <input type="text" id="gcMax" inputmode="numeric" placeholder="Ej: 3.500" oninput="formatearMiles(this)">
+  </div>
+
   <div class="card">
     <label>¿Algo más que sea importante para vos?</label>
     <div class="hint">Ej: luminoso, jardín al fondo, sin techo de tejas, cerca de la rambla, etc.</div>
@@ -461,6 +468,10 @@
         if (c) c.checked = true;
       });
     }
+    if (params.has('gcMax')) {
+      document.getElementById('gcMax').value = params.get('gcMax');
+      formatearMiles(document.getElementById('gcMax'));
+    }
     if (params.has('pedidos')) document.getElementById('pedidos').value = params.get('pedidos');
     if (params.has('link'))    document.getElementById('link').value = params.get('link');
     // Una vez aplicados los params, ajustamos visibilidad alquiler/compra
@@ -523,17 +534,24 @@
 
   /**
    * Muestra/oculta secciones que dependen de si eligió ALQUILER o COMPRA.
-   * Se llama cuando cambia la operación.
+   * También maneja la sección de Gastos Comunes que solo aparece si la
+   * combinación es ALQUILER + APTO (las casas no suelen tener GC).
+   * Se llama cuando cambia la operación o el tipo de propiedad.
    */
   function actualizarVisibilidadAlquiler() {
     const op = document.querySelector('input[name="operacion"]:checked');
     const esAlquiler = op && op.value === 'alquiler';
     const esCompra = op && op.value === 'compra';
+    const tipoApto = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
+      .some(c => c.value === 'apto');
     document.querySelectorAll('.solo-alquiler').forEach(el => {
       el.style.display = esAlquiler ? '' : 'none';
     });
     document.querySelectorAll('.solo-compra').forEach(el => {
       el.style.display = esCompra ? '' : 'none';
+    });
+    document.querySelectorAll('.solo-alquiler-apto').forEach(el => {
+      el.style.display = (esAlquiler && tipoApto) ? '' : 'none';
     });
     actualizarLabelPresupuesto();
   }
@@ -593,6 +611,7 @@
       metrosTerrMax: document.getElementById('metrosTerrMax').value.trim(),
       metodo: metodo ? metodo.value : "",
       garantias: garantias,
+      gcMax: leerMiles('gcMax'),
       pedidos: document.getElementById('pedidos').value.trim(),
       link: document.getElementById('link').value.trim()
     };
@@ -623,6 +642,7 @@
     if (d.metodo)         params.set('metodo', d.metodo);
     if (d.moneda)         params.set('moneda', d.moneda);
     if (d.garantias)      params.set('garantias', d.garantias);
+    if (d.gcMax)          params.set('gcMax', d.gcMax);
     if (d.pedidos)        params.set('pedidos', d.pedidos);
     if (d.link)           params.set('link', d.link);
     return baseUrl + '?' + params.toString();
