@@ -177,6 +177,66 @@
   }
   .chip .x:hover { opacity: 1; }
 
+  /* Dropdown de sugerencias del autocomplete de barrios — diseño bien
+     resaltado porque los clientes se distraen y no notan que pueden tocar.
+     Borde rojo Remax + cabecera con instrucción + items grandes con
+     ícono "+" + animación al aparecer. */
+  .barrios-dropdown {
+    margin-top: 8px;
+    background: white;
+    border: 2px solid #DC1C2E;
+    border-radius: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+    display: none;
+    box-shadow: 0 4px 12px rgba(220, 28, 46, 0.15);
+    animation: dropdownAparece 0.18s ease-out;
+  }
+  .barrios-dropdown.visible { display: block; }
+  @keyframes dropdownAparece {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .barrios-dropdown-header {
+    background: #ffe5e8;
+    color: #DC1C2E;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 1px solid #ffd0d6;
+    user-select: none;
+  }
+  .barrios-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #1d1d1f;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f3;
+    user-select: none;
+    transition: background 0.1s;
+  }
+  .barrios-dropdown-item:last-child { border-bottom: none; }
+  .barrios-dropdown-item:hover { background: #f5f5f7; }
+  .barrios-dropdown-item:active { background: #ffe5e8; }
+  .barrios-dropdown-item .plus-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #DC1C2E;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-left: 10px;
+  }
+
   /* Subgrupo de min/max dentro de cada bloque */
   .subgrupo-titulo {
     font-size: 13px;
@@ -235,22 +295,25 @@
     <label>Tipo de propiedad</label>
     <div class="checkbox-group">
       <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="casa" onchange="actualizarVisibilidadAlquiler()"> Casa
+        <input type="checkbox" name="tipo" value="casa"> Casa
       </label>
       <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="apto" onchange="actualizarVisibilidadAlquiler()"> Apartamento
+        <input type="checkbox" name="tipo" value="apto"> Apartamento
       </label>
     </div>
   </div>
 
   <div class="card">
     <label>Barrios donde te gustaría vivir</label>
-    <div class="hint">Escribí un barrio y tocá <strong>+</strong>. Repetí por cada barrio.</div>
+    <div class="hint">Empezá a escribir y tocá la sugerencia. Si tu barrio no aparece, escribilo completo y tocá <strong>+</strong>.</div>
     <div class="barrios-input-row">
-      <input type="text" id="barrioInput" placeholder="Ej: Pocitos"
+      <input type="text" id="barrioInput" placeholder="Ej: escribí 'po' y tocá Pocitos"
+             autocomplete="off"
+             oninput="actualizarSugerenciasBarrios()"
              onkeydown="if(event.key==='Enter'){event.preventDefault();agregarBarrio();}">
       <button type="button" class="btn-add" onclick="agregarBarrio()">+</button>
     </div>
+    <div id="barriosDropdown" class="barrios-dropdown"></div>
     <div id="barriosChips" class="barrios-chips"></div>
   </div>
 
@@ -351,19 +414,12 @@
         <input type="checkbox" name="garantia" value="anda"> ANDA
       </label>
       <label class="checkbox-item">
-        <input type="checkbox" name="garantia" value="contaduria"> Contaduría
+        <input type="checkbox" name="garantia" value="contaduria"> Contaduría / CGN
       </label>
       <label class="checkbox-item">
         <input type="checkbox" name="garantia" value="aseguradora"> Aseguradora
       </label>
     </div>
-  </div>
-
-  <!-- Gastos comunes: solo si ALQUILER + APTO -->
-  <div class="card solo-alquiler-apto" id="cardGastosComunes" style="display:none;">
-    <label>Gastos comunes máximo (UYU)</label>
-    <div class="hint">Si la propiedad tiene GC mayor a este valor (con margen del 3%), se descarta.</div>
-    <input type="text" id="gcMax" inputmode="numeric" placeholder="Ej: 3.500" oninput="formatearMiles(this)">
   </div>
 
   <div class="card">
@@ -468,10 +524,6 @@
         if (c) c.checked = true;
       });
     }
-    if (params.has('gcMax')) {
-      document.getElementById('gcMax').value = params.get('gcMax');
-      formatearMiles(document.getElementById('gcMax'));
-    }
     if (params.has('pedidos')) document.getElementById('pedidos').value = params.get('pedidos');
     if (params.has('link'))    document.getElementById('link').value = params.get('link');
     // Una vez aplicados los params, ajustamos visibilidad alquiler/compra
@@ -506,24 +558,134 @@
     return document.getElementById(id).value.replace(/\D/g, '');
   }
 
+  // --- Catálogo de barrios para autocomplete ---
+  // ⚠️ Mantener en sync con `BarriosUruguay.kt` del lado de la app Android.
+  // Si agregás/sacás barrios, actualizar también ese archivo.
+  const BARRIOS_URUGUAY = [
+    // Montevideo
+    "Aguada", "Aires Puros", "Atahualpa", "Bañados de Carrasco", "Belvedere",
+    "Bella Italia", "Bella Vista", "Brazo Oriental", "Buceo", "Capurro",
+    "Carrasco", "Carrasco Norte", "Casabó", "Casavalle", "Centro",
+    "Centro Histórico", "Cerrito de la Victoria", "Cerro", "Ciudad Vieja",
+    "Colón Centro", "Colón Sureste", "Conciliación", "Cordón", "Flor de Maroñas",
+    "Goes", "Ituzaingó", "Jacinto Vera", "Jardines del Hipódromo",
+    "La Blanqueada", "La Comercial", "La Figurita", "La Paloma", "La Teja",
+    "Larrañaga", "Las Acacias", "Las Canteras", "Lezica", "Malvín",
+    "Malvín Norte", "Manga", "Maroñas", "Melilla", "Mercado Modelo",
+    "Nueva Savona", "Nuevo París", "Palermo", "Parque Batlle", "Parque Rodó",
+    "Paso de la Arena", "Paso de las Duranas", "Paso Molino", "Peñarol",
+    "Piedras Blancas", "Pocitos", "Pocitos Nuevo", "Prado", "Pueblo Victoria",
+    "Punta Carretas", "Punta de Rieles", "Punta Gorda", "Reducto", "Sayago",
+    "Tres Cruces", "Tres Ombúes", "Unión", "Villa Biarritz", "Villa del Cerro",
+    "Villa Dolores", "Villa Española", "Villa García", "Villa Muñoz",
+    // Canelones
+    "Ciudad de la Costa", "Solymar", "Solymar Norte", "Lagomar", "Lagomar Norte",
+    "Lagomar Sur", "El Pinar", "Pinar Norte", "Pinar Sur", "Shangrilá",
+    "Lomas de Solymar", "San José de Carrasco", "Parque Carrasco", "El Bosque",
+    "Barra de Carrasco", "Bello Horizonte", "Médanos de Solymar",
+    "Colinas de Solymar", "Costa de Oro", "Parque del Plata", "Atlántida",
+    "Atlántida Sur", "Atlántida Norte", "Las Toscas", "Las Vegas", "Salinas",
+    "Salinas Norte", "Marindia", "Villa Argentina", "San Luis", "Santa Ana",
+    "Estanque de Pando", "Neptunia", "La Floresta", "Costa Azul", "Araminda",
+    "Cuchilla Alta", "Santa Lucía del Este", "Jaureguiberry", "Guazuvirá",
+    "Las Piedras", "La Paz", "Progreso", "Pando", "Empalme Olmos",
+    "Barros Blancos", "Toledo", "Joaquín Suárez", "Suárez", "Sauce",
+    "Colonia Nicolich", "Aeroparque", "Canelones", "Santa Lucía", "Juanicó",
+    "San Ramón", "Tala", "San Bautista", "San Antonio", "San Jacinto",
+    "Santa Rosa", "Migues", "Montes", "Soca", "Cerrillos", "Los Cerrillos",
+    "Aguas Corrientes",
+    // San José
+    "San José", "San José de Mayo", "Ciudad del Plata", "Libertad",
+    "Playa Pascual", "Delta del Tigre", "Rincón de la Bolsa", "Ecilda Paullier",
+    "Kiyú", "Boca del Cufré", "Puntas de Valdez", "Rodríguez", "Raigón",
+    "Mal Abrigo", "Itaca", "Ordeig", "Villa María"
+  ];
+
+  /** Normaliza para matching: minúsculas + sin acentos + espacios colapsados. */
+  function normalizarBarrio(s) {
+    // ̀-ͯ es el rango de marcas diacríticas combinables (acentos
+    // que NFD separa de la letra base). Sacarlas = "Pocítos" ≡ "pocitos".
+    return s.normalize("NFD").replace(/[̀-ͯ]/g, "")
+            .toLowerCase().trim().replace(/\s+/g, " ");
+  }
+
+  /**
+   * Devuelve hasta `max` barrios del catálogo que matchean la query
+   * (case + acento insensible). Excluye los que ya están cargados.
+   * Prioriza los que empiezan con la query sobre los que la contienen en medio.
+   */
+  function buscarBarrios(query, max) {
+    max = max || 6;
+    const q = normalizarBarrio(query);
+    if (!q) return [];
+    const yaCargados = barriosArr.map(normalizarBarrio);
+    const empiezan = [];
+    const contienen = [];
+    for (const b of BARRIOS_URUGUAY) {
+      const n = normalizarBarrio(b);
+      if (yaCargados.indexOf(n) !== -1) continue;
+      if (n.startsWith(q)) empiezan.push(b);
+      else if (n.indexOf(q) !== -1) contienen.push(b);
+    }
+    return empiezan.concat(contienen).slice(0, max);
+  }
+
+  /**
+   * Refresca el dropdown según lo que tipeó el usuario. Se llama desde
+   * el `oninput` del campo. Si no hay matches, oculta el dropdown.
+   */
+  function actualizarSugerenciasBarrios() {
+    const input = document.getElementById('barrioInput');
+    const dropdown = document.getElementById('barriosDropdown');
+    const sugerencias = buscarBarrios(input.value);
+    if (sugerencias.length === 0) {
+      dropdown.classList.remove('visible');
+      dropdown.innerHTML = '';
+      return;
+    }
+    // onmousedown en vez de onclick para que dispare ANTES del blur
+    // del input — sino el click del dropdown se cancela cuando el
+    // usuario toca afuera del input en mobile.
+    const items = sugerencias.map(s =>
+      '<div class="barrios-dropdown-item" onmousedown="event.preventDefault();agregarBarrio(\'' +
+        s.replace(/'/g, "\\'") + '\')">' +
+        '<span>' + s + '</span>' +
+        '<span class="plus-icon">+</span>' +
+      '</div>'
+    ).join('');
+    dropdown.innerHTML =
+      '<div class="barrios-dropdown-header">👇 Tocá un barrio para agregarlo</div>' +
+      items;
+    dropdown.classList.add('visible');
+  }
+
   // --- Manejo de barrios como chips ---
   const barriosArr = [];
-  function agregarBarrio() {
+  /**
+   * Agrega un barrio. Si se llama sin argumento, usa el valor actual del
+   * input. Si se llama con un nombre del dropdown, agrega ese directamente.
+   * Dedup case-insensible y con normalización de acentos.
+   */
+  function agregarBarrio(valor) {
     const input = document.getElementById('barrioInput');
-    const v = input.value.trim();
+    const raw = (valor !== undefined ? valor : input.value);
+    const v = (raw || '').trim();
     if (!v) return;
-    if (barriosArr.some(b => b.toLowerCase() === v.toLowerCase())) {
+    if (barriosArr.some(b => normalizarBarrio(b) === normalizarBarrio(v))) {
       input.value = '';
+      actualizarSugerenciasBarrios();
       return;
     }
     barriosArr.push(v);
     input.value = '';
     renderBarrios();
+    actualizarSugerenciasBarrios();
     input.focus();
   }
   function quitarBarrio(idx) {
     barriosArr.splice(idx, 1);
     renderBarrios();
+    actualizarSugerenciasBarrios();
   }
   function renderBarrios() {
     const cont = document.getElementById('barriosChips');
@@ -534,24 +696,17 @@
 
   /**
    * Muestra/oculta secciones que dependen de si eligió ALQUILER o COMPRA.
-   * También maneja la sección de Gastos Comunes que solo aparece si la
-   * combinación es ALQUILER + APTO (las casas no suelen tener GC).
-   * Se llama cuando cambia la operación o el tipo de propiedad.
+   * Se llama cuando cambia la operación.
    */
   function actualizarVisibilidadAlquiler() {
     const op = document.querySelector('input[name="operacion"]:checked');
     const esAlquiler = op && op.value === 'alquiler';
     const esCompra = op && op.value === 'compra';
-    const tipoApto = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
-      .some(c => c.value === 'apto');
     document.querySelectorAll('.solo-alquiler').forEach(el => {
       el.style.display = esAlquiler ? '' : 'none';
     });
     document.querySelectorAll('.solo-compra').forEach(el => {
       el.style.display = esCompra ? '' : 'none';
-    });
-    document.querySelectorAll('.solo-alquiler-apto').forEach(el => {
-      el.style.display = (esAlquiler && tipoApto) ? '' : 'none';
     });
     actualizarLabelPresupuesto();
   }
@@ -611,7 +766,6 @@
       metrosTerrMax: document.getElementById('metrosTerrMax').value.trim(),
       metodo: metodo ? metodo.value : "",
       garantias: garantias,
-      gcMax: leerMiles('gcMax'),
       pedidos: document.getElementById('pedidos').value.trim(),
       link: document.getElementById('link').value.trim()
     };
@@ -642,7 +796,6 @@
     if (d.metodo)         params.set('metodo', d.metodo);
     if (d.moneda)         params.set('moneda', d.moneda);
     if (d.garantias)      params.set('garantias', d.garantias);
-    if (d.gcMax)          params.set('gcMax', d.gcMax);
     if (d.pedidos)        params.set('pedidos', d.pedidos);
     if (d.link)           params.set('link', d.link);
     return baseUrl + '?' + params.toString();
