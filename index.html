@@ -307,9 +307,10 @@
     <label>Barrios donde te gustaría vivir</label>
     <div class="hint">Empezá a escribir y tocá la sugerencia. Si tu barrio no aparece, escribilo completo y tocá <strong>+</strong>.</div>
     <div class="barrios-input-row">
-      <input type="text" id="barrioInput" placeholder="Ej: escribí 'po' y tocá Pocitos"
+      <input type="text" id="barrioInput" placeholder="Empezá a escribir…"
              autocomplete="off"
              oninput="actualizarSugerenciasBarrios()"
+             onfocus="enfocarBarrioInput()"
              onkeydown="if(event.key==='Enter'){event.preventDefault();agregarBarrio();}">
       <button type="button" class="btn-add" onclick="agregarBarrio()">+</button>
     </div>
@@ -628,6 +629,21 @@
       else if (n.indexOf(q) !== -1) contienen.push(b);
     }
     return empiezan.concat(contienen).slice(0, max);
+  }
+
+  /**
+   * Cuando el usuario toca el campo de barrios, scroll para que la card
+   * quede arriba del todo. Sino, al saltar el teclado del celu se come
+   * la lista de sugerencias y el cliente no la ve.
+   * Delay de 300ms para esperar que el teclado termine de aparecer
+   * (sino el browser scrollea con el viewport completo y al final el
+   * keyboard lo tapa igual).
+   */
+  function enfocarBarrioInput() {
+    setTimeout(function () {
+      const card = document.getElementById('barrioInput').closest('.card');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
   }
 
   /**
