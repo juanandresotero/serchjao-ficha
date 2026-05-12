@@ -293,12 +293,28 @@
 
   <div class="card">
     <label>Tipo de propiedad</label>
+    <div class="hint">Casa y apartamento se pueden mezclar. Los demás son búsquedas separadas: si elegís uno, se deseleccionan los otros.</div>
     <div class="checkbox-group">
       <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="casa"> Casa
+        <input type="checkbox" name="tipo" value="casa" onchange="onTipoChange(this)"> Casa
       </label>
       <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="apto"> Apartamento
+        <input type="checkbox" name="tipo" value="apto" onchange="onTipoChange(this)"> Apartamento
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="tipo" value="monoambiente" onchange="onTipoChange(this)"> Monoambiente
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="tipo" value="cochera" onchange="onTipoChange(this)"> Cochera
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="tipo" value="local" onchange="onTipoChange(this)"> Local comercial
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="tipo" value="deposito" onchange="onTipoChange(this)"> Depósito / galpón
+      </label>
+      <label class="checkbox-item">
+        <input type="checkbox" name="tipo" value="terreno" onchange="onTipoChange(this)"> Terreno / lote
       </label>
     </div>
   </div>
@@ -334,21 +350,21 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card tipo-residencial tipo-local" id="cardDormBanos">
     <label>Cantidad mínima</label>
     <div class="row">
-      <div>
+      <div class="campo-dormitorios">
         <div class="hint">Dormitorios</div>
         <input type="number" id="dormitorios" placeholder="Ej: 2" min="0">
       </div>
-      <div>
+      <div class="campo-banos">
         <div class="hint">Baños</div>
         <input type="number" id="banos" placeholder="Ej: 1" min="0">
       </div>
     </div>
   </div>
 
-  <div class="card">
+  <div class="card tipo-residencial" id="cardCochera">
     <label>¿Necesitás cochera obligatoria?</label>
     <div class="checkbox-group">
       <label class="checkbox-item">
@@ -360,9 +376,9 @@
     </div>
   </div>
 
-  <div class="card">
-    <label>Metros cubiertos (de la propiedad construida)</label>
-    <div class="hint">Cuánta superficie construida tiene la casa o apartamento. Opcional.</div>
+  <div class="card tipo-residencial tipo-local tipo-deposito" id="cardMetrosCub">
+    <label>Metros cubiertos (construidos)</label>
+    <div class="hint">Cuánta superficie construida. Opcional.</div>
     <div class="row">
       <div>
         <div class="subgrupo-titulo">Mínimo</div>
@@ -375,17 +391,22 @@
     </div>
   </div>
 
-  <div class="card">
-    <label>Metros del terreno (terreno completo, incluyendo construido + libre)</label>
-    <div class="hint">Aplica sobre todo a casas. Cuánto terreno total tiene la propiedad. Opcional.</div>
+  <div class="card tipo-casa tipo-deposito tipo-terreno" id="cardMetrosTerr">
+    <label id="lblMetrosTerr">Metros del terreno</label>
+    <div class="hint" id="hintMetrosTerr">Aplica a casas, depósitos y terrenos. Cuánto terreno total. Opcional.</div>
+    <div id="toggleHectareasWrap" style="display:none; margin-bottom:8px;">
+      <label class="checkbox-item" style="font-weight:600;">
+        <input type="checkbox" id="usarHectareas" onchange="onToggleHectareas()"> Ingresar en hectáreas (ha) en vez de m²
+      </label>
+    </div>
     <div class="row">
       <div>
         <div class="subgrupo-titulo">Mínimo</div>
-        <input type="number" id="metrosTerrMin" placeholder="Ej: 200" min="0">
+        <input type="text" inputmode="decimal" id="metrosTerrMin" placeholder="Ej: 200" min="0">
       </div>
       <div>
         <div class="subgrupo-titulo">Máximo</div>
-        <input type="number" id="metrosTerrMax" placeholder="Ej: 600" min="0">
+        <input type="text" inputmode="decimal" id="metrosTerrMax" placeholder="Ej: 600" min="0">
       </div>
     </div>
   </div>
@@ -398,7 +419,7 @@
         <input type="radio" name="metodo" value="contado"> Contado
       </label>
       <label class="checkbox-item">
-        <input type="radio" name="metodo" value="prestamo"> Préstamo
+        <input type="radio" name="metodo" value="prestamo"> Banco
       </label>
       <label class="checkbox-item">
         <input type="radio" name="metodo" value="indistinto"> Las dos
@@ -406,8 +427,8 @@
     </div>
   </div>
 
-  <!-- Garantías: solo si ALQUILER. Multi-select. -->
-  <div class="card solo-alquiler" id="cardGarantias" style="display:none;">
+  <!-- Garantías: solo si ALQUILER + residencial (casa/apto/monoambiente). -->
+  <div class="card solo-alquiler tipo-residencial" id="cardGarantias" style="display:none;">
     <label>Garantías que tenés disponibles</label>
     <div class="hint">Tildá las que tengas. Solo descartamos propiedades que claramente NO acepten ninguna de estas.</div>
     <div class="checkbox-group">
@@ -476,13 +497,19 @@
       if (r) r.checked = true;
     }
     if (params.has('tipo')) {
-      const v = params.get('tipo');
-      if (v === 'ambas' || v === 'casa') {
-        const c = document.querySelector('input[name="tipo"][value="casa"]'); if (c) c.checked = true;
-      }
-      if (v === 'ambas' || v === 'apto') {
-        const c = document.querySelector('input[name="tipo"][value="apto"]'); if (c) c.checked = true;
-      }
+      const v = params.get('tipo').toLowerCase();
+      const setChecked = (val) => {
+        const c = document.querySelector(`input[name="tipo"][value="${val}"]`);
+        if (c) c.checked = true;
+      };
+      if (v === 'ambas') { setChecked('casa'); setChecked('apto'); }
+      else if (v === 'casa') setChecked('casa');
+      else if (v === 'apto') setChecked('apto');
+      else if (v === 'monoambiente') setChecked('monoambiente');
+      else if (v === 'cochera') setChecked('cochera');
+      else if (v === 'local') setChecked('local');
+      else if (v === 'deposito' || v === 'depósito' || v === 'galpon' || v === 'galpón') setChecked('deposito');
+      else if (v === 'terreno' || v === 'lote') setChecked('terreno');
     }
     if (params.has('barrios')) {
       const lista = params.get('barrios').split(',').map(s => s.trim()).filter(s => s);
@@ -528,7 +555,9 @@
     if (params.has('pedidos')) document.getElementById('pedidos').value = params.get('pedidos');
     if (params.has('link'))    document.getElementById('link').value = params.get('link');
     // Una vez aplicados los params, ajustamos visibilidad alquiler/compra
+    // y la visibilidad por tipo de propiedad elegido.
     actualizarVisibilidadAlquiler();
+    actualizarVisibilidadPorTipo();
   }
 
   if (nombreAgente) {
@@ -749,13 +778,152 @@
     }
   }
 
+  /**
+   * Reglas de exclusividad entre tipos:
+   *  - Casa + Apto se pueden mezclar.
+   *  - Monoambiente es subcategoría de Apto — al elegirlo deseleccionamos
+   *    Casa (las casas no son monoambiente) pero NO Apto si estaba marcado.
+   *  - Cualquier no-residencial (cochera/local/depósito/terreno) es
+   *    EXCLUSIVO: deselecciona todos los demás.
+   */
+  function onTipoChange(checkbox) {
+    if (!checkbox.checked) {
+      actualizarVisibilidadPorTipo();
+      return;
+    }
+    const v = checkbox.value;
+    const noResidenciales = ['cochera', 'local', 'deposito', 'terreno'];
+    if (noResidenciales.includes(v)) {
+      // Exclusivo: deseleccionar todo menos este.
+      document.querySelectorAll('input[name="tipo"]').forEach(c => {
+        if (c !== checkbox) c.checked = false;
+      });
+    } else if (v === 'monoambiente') {
+      // Monoambiente: descheck Casa y cualquier no-residencial.
+      document.querySelectorAll('input[name="tipo"]').forEach(c => {
+        if (c.value === 'casa' || noResidenciales.includes(c.value)) c.checked = false;
+      });
+    } else {
+      // Casa o Apto: deseleccionar todos los no-residenciales y monoambiente.
+      document.querySelectorAll('input[name="tipo"]').forEach(c => {
+        if (c.value === 'monoambiente' || noResidenciales.includes(c.value)) c.checked = false;
+      });
+    }
+    actualizarVisibilidadPorTipo();
+  }
+
+  /**
+   * Muestra/oculta cards de criterios según el tipo elegido.
+   * Las cards en HTML tienen clases tipo-residencial / tipo-casa / tipo-local
+   * / tipo-deposito / tipo-terreno indicando dónde aplican.
+   */
+  function actualizarVisibilidadPorTipo() {
+    const checked = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
+      .map(c => c.value);
+    const sinElegir = checked.length === 0;
+    const esResidencial = sinElegir || checked.includes('casa') ||
+      checked.includes('apto') || checked.includes('monoambiente');
+    const hayCasa = checked.includes('casa') || sinElegir;
+    const esLocal = checked.includes('local');
+    const esDeposito = checked.includes('deposito');
+    const esTerreno = checked.includes('terreno');
+    const esCochera = checked.includes('cochera');
+    const esMonoambiente = checked.includes('monoambiente');
+
+    // Dormitorios y baños card — solo si tiene sentido alguno de los dos
+    const mostrarDorm = esResidencial && !esMonoambiente;
+    const mostrarBanos = esResidencial || esLocal;
+    document.getElementById('cardDormBanos').style.display =
+      (mostrarDorm || mostrarBanos) ? '' : 'none';
+    const elDorm = document.querySelector('.campo-dormitorios');
+    const elBanos = document.querySelector('.campo-banos');
+    if (elDorm) elDorm.style.display = mostrarDorm ? '' : 'none';
+    if (elBanos) elBanos.style.display = mostrarBanos ? '' : 'none';
+
+    // Cochera obligatoria — solo residencial sin monoambiente
+    document.getElementById('cardCochera').style.display =
+      (esResidencial && !esMonoambiente && !esCochera) ? '' : 'none';
+
+    // m² cubiertos — residencial, local, depósito
+    document.getElementById('cardMetrosCub').style.display =
+      (esResidencial || esLocal || esDeposito) ? '' : 'none';
+
+    // m² totales del terreno — casa, depósito, terreno
+    document.getElementById('cardMetrosTerr').style.display =
+      (hayCasa || esDeposito || esTerreno) ? '' : 'none';
+
+    // Toggle hectáreas solo si es terreno
+    document.getElementById('toggleHectareasWrap').style.display =
+      esTerreno ? '' : 'none';
+    if (!esTerreno) {
+      const t = document.getElementById('usarHectareas');
+      if (t && t.checked) { t.checked = false; onToggleHectareas(); }
+    }
+
+    // Garantías — solo residencial alquiler (la regla "solo-alquiler" ya
+    // está manejada aparte por actualizarVisibilidadAlquiler).
+    // Si NO es residencial, escondemos garantías incluso si es alquiler.
+    if (!esResidencial) {
+      const g = document.getElementById('cardGarantias');
+      if (g) g.style.display = 'none';
+    }
+
+    // Re-aplicar visibilidad por operación (para no romper la regla compra/alquiler)
+    if (typeof actualizarVisibilidadAlquiler === 'function') {
+      // pero NO sobreescribir las cards no-residenciales — esta función
+      // solo toca las .solo-alquiler y .solo-compra, así que llamarla
+      // restaura cards alquiler si correspondiera. Sin embargo, garantías
+      // tiene clase combinada tipo-residencial + solo-alquiler — el orden
+      // de aplicación importa. Implementamos AND lógico:
+      const op = document.querySelector('input[name="operacion"]:checked');
+      const esAlq = op && op.value === 'alquiler';
+      const g = document.getElementById('cardGarantias');
+      if (g) g.style.display = (esAlq && esResidencial) ? '' : 'none';
+    }
+  }
+
+  /**
+   * Convierte el valor mostrado en el campo cuando cambia el toggle ha/m².
+   * - Activar ha: divide valor actual por 10.000 (si era m²)
+   * - Desactivar ha: multiplica por 10.000 (vuelve a m²)
+   */
+  function onToggleHectareas() {
+    const usar = document.getElementById('usarHectareas').checked;
+    const minIn = document.getElementById('metrosTerrMin');
+    const maxIn = document.getElementById('metrosTerrMax');
+    const convertir = (input) => {
+      const v = parseFloat((input.value || '').replace(',', '.'));
+      if (isNaN(v)) return;
+      if (usar) {
+        // m² → ha
+        input.value = (v / 10000).toString();
+      } else {
+        // ha → m²
+        input.value = String(Math.round(v * 10000));
+      }
+    };
+    convertir(minIn);
+    convertir(maxIn);
+    document.getElementById('lblMetrosTerr').textContent =
+      usar ? 'Superficie total del terreno (hectáreas)'
+           : 'Metros del terreno';
+    minIn.placeholder = usar ? 'Ej: 1.5' : 'Ej: 200';
+    maxIn.placeholder = usar ? 'Ej: 5' : 'Ej: 600';
+  }
+
   function recolectarDatos() {
     const tipos = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
       .map(c => c.value);
-    const tipoStr = tipos.length === 2 ? "ambas"
-      : tipos.includes("casa") ? "casa"
-      : tipos.includes("apto") ? "apto"
-      : "";
+    // tipoStr: convertimos a string compatible con el parser de Android
+    let tipoStr = "";
+    if (tipos.includes("cochera")) tipoStr = "cochera";
+    else if (tipos.includes("local")) tipoStr = "local";
+    else if (tipos.includes("deposito")) tipoStr = "deposito";
+    else if (tipos.includes("terreno")) tipoStr = "terreno";
+    else if (tipos.includes("monoambiente")) tipoStr = "monoambiente";
+    else if (tipos.includes("casa") && tipos.includes("apto")) tipoStr = "ambas";
+    else if (tipos.includes("casa")) tipoStr = "casa";
+    else if (tipos.includes("apto")) tipoStr = "apto";
 
     const op = document.querySelector('input[name="operacion"]:checked');
     const cochera = document.querySelector('input[name="cochera"]:checked');
@@ -765,6 +933,22 @@
       .map(c => c.value)
       .join(",");
 
+    // m² del terreno: si el toggle de hectáreas está activo, multiplicamos
+    // por 10.000 para guardar siempre en m² (Android espera m²).
+    const usarHa = document.getElementById('usarHectareas')?.checked;
+    const leerTerreno = (id) => {
+      const raw = (document.getElementById(id).value || '').trim()
+        .replace(',', '.');
+      if (!raw) return '';
+      const v = parseFloat(raw);
+      if (isNaN(v)) return '';
+      return usarHa ? String(Math.round(v * 10000)) : String(Math.round(v));
+    };
+
+    // Dormitorios: si el tipo es monoambiente, forzamos 0.
+    const dormManual = document.getElementById('dormitorios').value.trim();
+    const dormFinal = tipos.includes("monoambiente") ? "0" : dormManual;
+
     return {
       nombre: document.getElementById('nombre').value.trim(),
       operacion: op ? op.value : "",
@@ -773,13 +957,13 @@
       moneda: moneda ? moneda.value : "",
       presupuestoMin: leerMiles('presupuestoMin'),
       presupuestoMax: leerMiles('presupuestoMax'),
-      dormitorios: document.getElementById('dormitorios').value.trim(),
+      dormitorios: dormFinal,
       banos: document.getElementById('banos').value.trim(),
       cochera: cochera ? cochera.value : "",
       metrosCubMin: document.getElementById('metrosCubMin').value.trim(),
       metrosCubMax: document.getElementById('metrosCubMax').value.trim(),
-      metrosTerrMin: document.getElementById('metrosTerrMin').value.trim(),
-      metrosTerrMax: document.getElementById('metrosTerrMax').value.trim(),
+      metrosTerrMin: leerTerreno('metrosTerrMin'),
+      metrosTerrMax: leerTerreno('metrosTerrMax'),
       metodo: metodo ? metodo.value : "",
       garantias: garantias,
       pedidos: document.getElementById('pedidos').value.trim(),
@@ -820,7 +1004,7 @@
   function validar(d) {
     if (!d.nombre) { alert("Por favor poné tu nombre"); return false; }
     if (!d.operacion) { alert("Elegí si querés comprar o alquilar"); return false; }
-    if (!d.tipo) { alert("Elegí casa o apartamento"); return false; }
+    if (!d.tipo) { alert("Elegí al menos un tipo de propiedad"); return false; }
     return true;
   }
 
@@ -844,8 +1028,9 @@
     aplicarParamsAlForm();
   } else {
     // Form vacío arrancando: forzar visibilidad inicial (todo oculto hasta
-    // que elija operación)
+    // que elija operación / tipo)
     actualizarVisibilidadAlquiler();
+    actualizarVisibilidadPorTipo();
   }
 </script>
 
