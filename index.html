@@ -237,6 +237,37 @@
     margin-left: 10px;
   }
 
+  /* Chip "Monoambiente" — destacado con borde primario más grueso y,
+     cuando está seleccionado, fondo primario + texto blanco + icono check.
+     Replica el estilo del chip de Android. */
+  .chip-monoambiente {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1.5px solid #DC1C2E;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+    color: #DC1C2E;
+    background: white;
+    transition: all 0.15s;
+  }
+  .chip-monoambiente input { display: none; }
+  .chip-monoambiente .chip-monoambiente-check {
+    display: none;
+    font-weight: 700;
+  }
+  .chip-monoambiente:has(input:checked) {
+    background: #DC1C2E;
+    color: white;
+    font-weight: 700;
+  }
+  .chip-monoambiente:has(input:checked) .chip-monoambiente-check {
+    display: inline;
+  }
+
   /* Subgrupo de min/max dentro de cada bloque */
   .subgrupo-titulo {
     font-size: 13px;
@@ -293,7 +324,8 @@
 
   <div class="card">
     <label>Tipo de propiedad</label>
-    <div class="hint">Casa y apartamento se pueden mezclar. Los demás son búsquedas separadas: si elegís uno, se deseleccionan los otros.</div>
+    <div class="hint">Casa y apartamento se pueden mezclar. Tocando «Otros» aparecen cochera, local, depósito y terreno.</div>
+    <!-- Fila 1: Casa / Apto / Otros (3 chips ocupando el renglón completo) -->
     <div class="checkbox-group">
       <label class="checkbox-item">
         <input type="checkbox" name="tipo" value="casa" onchange="onTipoChange(this)"> Casa
@@ -301,21 +333,28 @@
       <label class="checkbox-item">
         <input type="checkbox" name="tipo" value="apto" onchange="onTipoChange(this)"> Apartamento
       </label>
-      <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="monoambiente" onchange="onTipoChange(this)"> Monoambiente
+      <label class="checkbox-item" id="chipOtros" onclick="toggleOtros(event)">
+        <span id="chipOtrosLabel">Otros ▾</span>
       </label>
-      <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="cochera" onchange="onTipoChange(this)"> Cochera
-      </label>
-      <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="local" onchange="onTipoChange(this)"> Local comercial
-      </label>
-      <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="deposito" onchange="onTipoChange(this)"> Depósito / galpón
-      </label>
-      <label class="checkbox-item">
-        <input type="checkbox" name="tipo" value="terreno" onchange="onTipoChange(this)"> Terreno / lote
-      </label>
+    </div>
+    <!-- Sub-menu desplegable con los 4 no-residenciales -->
+    <div id="subMenuOtros" style="display:none; margin-top: 10px;">
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" name="tipo" value="cochera" onchange="onTipoChange(this)"> Cochera
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="tipo" value="local" onchange="onTipoChange(this)"> Local
+        </label>
+      </div>
+      <div class="checkbox-group" style="margin-top: 10px;">
+        <label class="checkbox-item">
+          <input type="checkbox" name="tipo" value="deposito" onchange="onTipoChange(this)"> Depósito / galpón
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="tipo" value="terreno" onchange="onTipoChange(this)"> Terreno / lote
+        </label>
+      </div>
     </div>
   </div>
 
@@ -356,6 +395,14 @@
       <div class="campo-dormitorios">
         <div class="hint">Dormitorios</div>
         <input type="number" id="dormitorios" placeholder="Ej: 2" min="0">
+        <!-- Chip Monoambiente: solo visible si elegiste Apto. Cuando se
+             activa, deshabilita el input de dormitorios y guarda dorm=0.
+             Estilo destacado (chip-monoambiente). -->
+        <label class="chip-monoambiente" id="chipMonoambienteWrap" style="display:none; margin-top: 10px;">
+          <input type="checkbox" id="chipMonoambiente" onchange="onMonoambienteChange()">
+          <span class="chip-monoambiente-check">✓</span>
+          <span class="chip-monoambiente-text">Monoambiente</span>
+        </label>
       </div>
       <div class="campo-banos">
         <div class="hint">Baños</div>
@@ -505,7 +552,12 @@
       if (v === 'ambas') { setChecked('casa'); setChecked('apto'); }
       else if (v === 'casa') setChecked('casa');
       else if (v === 'apto') setChecked('apto');
-      else if (v === 'monoambiente') setChecked('monoambiente');
+      else if (v === 'monoambiente') {
+        // Monoambiente: marcar Apto + activar el chip especial
+        setChecked('apto');
+        const chipMA = document.getElementById('chipMonoambiente');
+        if (chipMA) chipMA.checked = true;
+      }
       else if (v === 'cochera') setChecked('cochera');
       else if (v === 'local') setChecked('local');
       else if (v === 'deposito' || v === 'depósito' || v === 'galpon' || v === 'galpón') setChecked('deposito');
@@ -554,10 +606,23 @@
     }
     if (params.has('pedidos')) document.getElementById('pedidos').value = params.get('pedidos');
     if (params.has('link'))    document.getElementById('link').value = params.get('link');
-    // Una vez aplicados los params, ajustamos visibilidad alquiler/compra
-    // y la visibilidad por tipo de propiedad elegido.
+    // Compat: si dorm=0 viene en URL (Android exporta así monoambiente),
+    // activamos el chip Monoambiente y deshabilitamos el campo numérico.
+    if (params.has('dorm') && params.get('dorm') === '0') {
+      const apto = document.querySelector('input[name="tipo"][value="apto"]');
+      if (apto) apto.checked = true;
+      const chipMA = document.getElementById('chipMonoambiente');
+      if (chipMA) chipMA.checked = true;
+    }
+    // Una vez aplicados los params, ajustamos visibilidad alquiler/compra,
+    // el sub-menú Otros (auto-expande si hay no-residencial), la visibilidad
+    // por tipo, y la sincronización del chip Monoambiente.
     actualizarVisibilidadAlquiler();
+    aplicarEstadoOtros();
     actualizarVisibilidadPorTipo();
+    if (document.getElementById('chipMonoambiente')?.checked) {
+      onMonoambienteChange();
+    }
   }
 
   if (nombreAgente) {
@@ -778,16 +843,57 @@
     }
   }
 
+  // Estado: si el sub-menú "Otros" está expandido (para mostrar cochera/
+  // local/depósito/terreno). Se mantiene en true si hay algún no-residencial
+  // elegido (para que el usuario vea su selección al volver a la pantalla).
+  let otrosExpandido = false;
+
+  /**
+   * Toggle del sub-menú "Otros". Se llama al tocar el chip "Otros ▾".
+   */
+  function toggleOtros(event) {
+    if (event) event.preventDefault();
+    otrosExpandido = !otrosExpandido;
+    aplicarEstadoOtros();
+  }
+
+  /**
+   * Aplica el estado actual (otrosExpandido + selección de no-residenciales)
+   * a la UI: muestra/oculta sub-menú y marca el chip "Otros" como seleccionado
+   * cuando hay un no-residencial elegido.
+   */
+  function aplicarEstadoOtros() {
+    const noResidenciales = ['cochera', 'local', 'deposito', 'terreno'];
+    const hayNoResidencial = noResidenciales.some(v =>
+      document.querySelector(`input[name="tipo"][value="${v}"]`)?.checked
+    );
+    const sub = document.getElementById('subMenuOtros');
+    sub.style.display = (otrosExpandido || hayNoResidencial) ? '' : 'none';
+    const chipOtros = document.getElementById('chipOtros');
+    const lbl = document.getElementById('chipOtrosLabel');
+    if (chipOtros) {
+      if (hayNoResidencial) {
+        chipOtros.style.background = '#ffe5e8';
+        chipOtros.style.borderColor = '#DC1C2E';
+      } else {
+        chipOtros.style.background = '';
+        chipOtros.style.borderColor = '';
+      }
+    }
+    if (lbl) lbl.textContent = (otrosExpandido || hayNoResidencial) ? 'Otros ▴' : 'Otros ▾';
+  }
+
   /**
    * Reglas de exclusividad entre tipos:
    *  - Casa + Apto se pueden mezclar.
-   *  - Monoambiente es subcategoría de Apto — al elegirlo deseleccionamos
-   *    Casa (las casas no son monoambiente) pero NO Apto si estaba marcado.
    *  - Cualquier no-residencial (cochera/local/depósito/terreno) es
    *    EXCLUSIVO: deselecciona todos los demás.
+   *  - Monoambiente NO es un check de "tipo" — vive como chip aparte en la
+   *    sección de dormitorios y se sincroniza con Apto.
    */
   function onTipoChange(checkbox) {
     if (!checkbox.checked) {
+      aplicarEstadoOtros();
       actualizarVisibilidadPorTipo();
       return;
     }
@@ -798,18 +904,41 @@
       document.querySelectorAll('input[name="tipo"]').forEach(c => {
         if (c !== checkbox) c.checked = false;
       });
-    } else if (v === 'monoambiente') {
-      // Monoambiente: descheck Casa y cualquier no-residencial.
-      document.querySelectorAll('input[name="tipo"]').forEach(c => {
-        if (c.value === 'casa' || noResidenciales.includes(c.value)) c.checked = false;
-      });
+      // Al elegir no-residencial, también limpio el chip Monoambiente.
+      const chipMA = document.getElementById('chipMonoambiente');
+      if (chipMA) chipMA.checked = false;
+      otrosExpandido = true;
     } else {
-      // Casa o Apto: deseleccionar todos los no-residenciales y monoambiente.
+      // Casa o Apto: deseleccionar todos los no-residenciales.
       document.querySelectorAll('input[name="tipo"]').forEach(c => {
-        if (c.value === 'monoambiente' || noResidenciales.includes(c.value)) c.checked = false;
+        if (noResidenciales.includes(c.value)) c.checked = false;
       });
     }
+    aplicarEstadoOtros();
     actualizarVisibilidadPorTipo();
+  }
+
+  /**
+   * Toggle del chip Monoambiente. Cuando se activa: marca Apto, deshabilita
+   * el campo dormitorios y vacía su valor. Cuando se desactiva: re-habilita
+   * el campo. Es la misma mecánica de la app Android.
+   */
+  function onMonoambienteChange() {
+    const chip = document.getElementById('chipMonoambiente');
+    const inputDorm = document.getElementById('dormitorios');
+    if (chip.checked) {
+      // Asegurarnos que Apto esté marcado (monoambiente es subcategoría)
+      const apto = document.querySelector('input[name="tipo"][value="apto"]');
+      if (apto && !apto.checked) {
+        apto.checked = true;
+        // Disparar la lógica de exclusividad sin re-marcar nada raro
+        onTipoChange(apto);
+      }
+      inputDorm.value = '';
+      inputDorm.disabled = true;
+    } else {
+      inputDorm.disabled = false;
+    }
   }
 
   /**
@@ -821,14 +950,25 @@
     const checked = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
       .map(c => c.value);
     const sinElegir = checked.length === 0;
-    const esResidencial = sinElegir || checked.includes('casa') ||
-      checked.includes('apto') || checked.includes('monoambiente');
+    const hayApto = checked.includes('apto');
+    const esResidencial = sinElegir || checked.includes('casa') || hayApto;
     const hayCasa = checked.includes('casa') || sinElegir;
     const esLocal = checked.includes('local');
     const esDeposito = checked.includes('deposito');
     const esTerreno = checked.includes('terreno');
     const esCochera = checked.includes('cochera');
-    const esMonoambiente = checked.includes('monoambiente');
+    // Monoambiente ahora es un chip aparte en la sección dormitorios.
+    const chipMA = document.getElementById('chipMonoambiente');
+    const esMonoambiente = chipMA?.checked === true;
+    // Chip visible solo si Apto está marcado.
+    const wrap = document.getElementById('chipMonoambienteWrap');
+    if (wrap) wrap.style.display = hayApto ? '' : 'none';
+    // Si dejé de tener Apto y el chip estaba activado, lo desactivo y rehabilito dorm.
+    if (!hayApto && chipMA?.checked) {
+      chipMA.checked = false;
+      const inputDorm = document.getElementById('dormitorios');
+      if (inputDorm) inputDorm.disabled = false;
+    }
 
     // Dormitorios y baños card — solo si tiene sentido alguno de los dos
     const mostrarDorm = esResidencial && !esMonoambiente;
@@ -914,13 +1054,16 @@
   function recolectarDatos() {
     const tipos = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
       .map(c => c.value);
+    // Monoambiente vive como chip aparte en sección dormitorios.
+    // Cuando está marcado, el tipo enviado es "monoambiente" (subcategoría de apto).
+    const esMonoambiente = document.getElementById('chipMonoambiente')?.checked === true;
     // tipoStr: convertimos a string compatible con el parser de Android
     let tipoStr = "";
     if (tipos.includes("cochera")) tipoStr = "cochera";
     else if (tipos.includes("local")) tipoStr = "local";
     else if (tipos.includes("deposito")) tipoStr = "deposito";
     else if (tipos.includes("terreno")) tipoStr = "terreno";
-    else if (tipos.includes("monoambiente")) tipoStr = "monoambiente";
+    else if (esMonoambiente) tipoStr = "monoambiente";
     else if (tipos.includes("casa") && tipos.includes("apto")) tipoStr = "ambas";
     else if (tipos.includes("casa")) tipoStr = "casa";
     else if (tipos.includes("apto")) tipoStr = "apto";
@@ -945,9 +1088,9 @@
       return usarHa ? String(Math.round(v * 10000)) : String(Math.round(v));
     };
 
-    // Dormitorios: si el tipo es monoambiente, forzamos 0.
+    // Dormitorios: si el chip Monoambiente está activo, forzamos 0.
     const dormManual = document.getElementById('dormitorios').value.trim();
-    const dormFinal = tipos.includes("monoambiente") ? "0" : dormManual;
+    const dormFinal = esMonoambiente ? "0" : dormManual;
 
     return {
       nombre: document.getElementById('nombre').value.trim(),
@@ -1030,6 +1173,7 @@
     // Form vacío arrancando: forzar visibilidad inicial (todo oculto hasta
     // que elija operación / tipo)
     actualizarVisibilidadAlquiler();
+    aplicarEstadoOtros();
     actualizarVisibilidadPorTipo();
   }
 </script>
