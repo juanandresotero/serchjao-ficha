@@ -324,7 +324,7 @@
 
   <div class="card">
     <label>Tipo de propiedad</label>
-    <div class="hint">Casa y apartamento se pueden mezclar. Tocando «Otros» aparecen cochera, local, depósito y terreno.</div>
+    <div class="hint">Podés mezclar varios tipos si te sirve cualquiera. Tocando «Otros» aparecen cochera, local, depósito y terreno.</div>
     <!-- Fila 1: Casa / Apto / Otros (3 chips ocupando el renglón completo) -->
     <div class="checkbox-group">
       <label class="checkbox-item">
@@ -456,9 +456,9 @@
     </div>
   </div>
 
-  <div class="card tipo-casa tipo-deposito tipo-terreno" id="cardMetrosTerr">
+  <div class="card tipo-casa tipo-apto tipo-deposito tipo-terreno" id="cardMetrosTerr">
     <label id="lblMetrosTerr">Metros del terreno</label>
-    <div class="hint" id="hintMetrosTerr">Aplica a casas, depósitos y terrenos. Cuánto terreno total. Opcional.</div>
+    <div class="hint" id="hintMetrosTerr">Aplica a casas, apartamentos (duplex, PH, ático), depósitos y terrenos. Cuánto terreno total. Opcional.</div>
     <div id="toggleHectareasWrap" style="display:none; margin-bottom:8px;">
       <label class="checkbox-item" style="font-weight:600;">
         <input type="checkbox" id="usarHectareas" onchange="onToggleHectareas()"> Ingresar en hectáreas (ha) en vez de m²
@@ -910,36 +910,15 @@
   }
 
   /**
-   * Reglas de exclusividad entre tipos:
-   *  - Casa + Apto se pueden mezclar.
-   *  - Cualquier no-residencial (cochera/local/depósito/terreno) es
-   *    EXCLUSIVO: deselecciona todos los demás.
-   *  - Monoambiente NO es un check de "tipo" — vive como chip aparte en la
-   *    sección de dormitorios y se sincroniza con Apto.
+   * Multi-selección libre de tipos. Pedido del usuario 2026-05-14: a veces
+   * los clientes exigen mezclas raras (ej: "casa O depósito"). El filtro queda
+   * menos preciso pero el agente lo decide.
+   *
+   * Monoambiente sigue siendo un chip aparte en la sección de dormitorios
+   * (no es un "tipo" por sí mismo — es Apto con dormitorios=0).
    */
   function onTipoChange(checkbox) {
-    if (!checkbox.checked) {
-      aplicarEstadoOtros();
-      actualizarVisibilidadPorTipo();
-      return;
-    }
-    const v = checkbox.value;
-    const noResidenciales = ['cochera', 'local', 'deposito', 'terreno'];
-    if (noResidenciales.includes(v)) {
-      // Exclusivo: deseleccionar todo menos este.
-      document.querySelectorAll('input[name="tipo"]').forEach(c => {
-        if (c !== checkbox) c.checked = false;
-      });
-      // Al elegir no-residencial, también limpio el chip Monoambiente.
-      const chipMA = document.getElementById('chipMonoambiente');
-      if (chipMA) chipMA.checked = false;
-      otrosExpandido = true;
-    } else {
-      // Casa o Apto: deseleccionar todos los no-residenciales.
-      document.querySelectorAll('input[name="tipo"]').forEach(c => {
-        if (noResidenciales.includes(c.value)) c.checked = false;
-      });
-    }
+    // Si destildaste un no-residencial, mantenemos otrosExpandido coherente.
     aplicarEstadoOtros();
     actualizarVisibilidadPorTipo();
   }
@@ -1014,9 +993,10 @@
     document.getElementById('cardMetrosCub').style.display =
       (esResidencial || esLocal || esDeposito) ? '' : 'none';
 
-    // m² totales del terreno — casa, depósito, terreno
+    // m² totales del terreno — casa, apto, depósito o terreno. Pedido del
+    // usuario: un apto también puede tener m² totales (duplex, PH, ático).
     document.getElementById('cardMetrosTerr').style.display =
-      (hayCasa || esDeposito || esTerreno) ? '' : 'none';
+      (hayCasa || hayApto || esDeposito || esTerreno) ? '' : 'none';
 
     // Toggle hectáreas solo si es terreno
     document.getElementById('toggleHectareasWrap').style.display =
