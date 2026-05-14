@@ -562,24 +562,29 @@
       if (r) r.checked = true;
     }
     if (params.has('tipo')) {
+      // Lista CSV de tipos (multi-selección 2026-05-14). Compat con valores
+      // sueltos viejos (ej: "casa", "apto", "monoambiente", "ambas").
       const v = params.get('tipo').toLowerCase();
       const setChecked = (val) => {
         const c = document.querySelector(`input[name="tipo"][value="${val}"]`);
         if (c) c.checked = true;
       };
-      if (v === 'ambas') { setChecked('casa'); setChecked('apto'); }
-      else if (v === 'casa') setChecked('casa');
-      else if (v === 'apto') setChecked('apto');
-      else if (v === 'monoambiente') {
-        // Monoambiente: marcar Apto + activar el chip especial
-        setChecked('apto');
-        const chipMA = document.getElementById('chipMonoambiente');
-        if (chipMA) chipMA.checked = true;
+      const partes = v.split(',').map(p => p.trim()).filter(p => p);
+      for (const p of partes) {
+        if (p === 'ambas' || p === 'ambos') { setChecked('casa'); setChecked('apto'); }
+        else if (p === 'casa') setChecked('casa');
+        else if (p === 'apto' || p === 'apartamento' || p === 'apartament') setChecked('apto');
+        else if (p === 'monoambiente') {
+          // Monoambiente: marcar Apto + activar el chip especial
+          setChecked('apto');
+          const chipMA = document.getElementById('chipMonoambiente');
+          if (chipMA) chipMA.checked = true;
+        }
+        else if (p === 'cochera' || p === 'garaje' || p === 'garage') setChecked('cochera');
+        else if (p === 'local' || p === 'local comercial' || p === 'comercio') setChecked('local');
+        else if (p === 'deposito' || p === 'depósito' || p === 'galpon' || p === 'galpón') setChecked('deposito');
+        else if (p === 'terreno' || p === 'lote' || p === 'fraccion' || p === 'fracción' || p === 'predio') setChecked('terreno');
       }
-      else if (v === 'cochera') setChecked('cochera');
-      else if (v === 'local') setChecked('local');
-      else if (v === 'deposito' || v === 'depósito' || v === 'galpon' || v === 'galpón') setChecked('deposito');
-      else if (v === 'terreno' || v === 'lote') setChecked('terreno');
     }
     if (params.has('barrios')) {
       const lista = params.get('barrios').split(',').map(s => s.trim()).filter(s => s);
@@ -1061,18 +1066,17 @@
     const tipos = Array.from(document.querySelectorAll('input[name="tipo"]:checked'))
       .map(c => c.value);
     // Monoambiente vive como chip aparte en sección dormitorios.
-    // Cuando está marcado, el tipo enviado es "monoambiente" (subcategoría de apto).
+    // Cuando está marcado, agregamos "monoambiente" a la lista (subcategoría
+    // de apto; el parser de Android lo trata como APTO + dormitorios=0).
     const esMonoambiente = document.getElementById('chipMonoambiente')?.checked === true;
-    // tipoStr: convertimos a string compatible con el parser de Android
-    let tipoStr = "";
-    if (tipos.includes("cochera")) tipoStr = "cochera";
-    else if (tipos.includes("local")) tipoStr = "local";
-    else if (tipos.includes("deposito")) tipoStr = "deposito";
-    else if (tipos.includes("terreno")) tipoStr = "terreno";
-    else if (esMonoambiente) tipoStr = "monoambiente";
-    else if (tipos.includes("casa") && tipos.includes("apto")) tipoStr = "ambas";
-    else if (tipos.includes("casa")) tipoStr = "casa";
-    else if (tipos.includes("apto")) tipoStr = "apto";
+    // tipoStr: CSV con TODOS los tipos seleccionados — multi-selección 2026-05-14.
+    // El parser de Android acepta lista separada por comas y detecta cualquier
+    // combinación (casa, apto, cochera, local, deposito, terreno, monoambiente).
+    const tiposLista = [...tipos];
+    if (esMonoambiente && !tiposLista.includes("monoambiente")) {
+      tiposLista.push("monoambiente");
+    }
+    const tipoStr = tiposLista.join(",");
 
     const op = document.querySelector('input[name="operacion"]:checked');
     const cochera = document.querySelector('input[name="cochera"]:checked');
