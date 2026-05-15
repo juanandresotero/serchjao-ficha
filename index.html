@@ -268,6 +268,73 @@
     display: inline;
   }
 
+  /* Segmented control 2-mitades CHICO (wrap-content) para Usado | A estrenar.
+     Convive en la misma fila con el chip Con renta. */
+  .segmented-mini {
+    display: inline-flex;
+    border: 1px solid #DC1C2E;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    vertical-align: middle;
+  }
+  .segmented-mini button.seg-mini-item {
+    background: white;
+    color: #DC1C2E;
+    border: none;
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-family: inherit;
+    margin: 0;
+    width: auto;
+    border-radius: 0;
+    margin-bottom: 0;
+    transition: all 0.15s;
+  }
+  .segmented-mini button.seg-mini-item + button.seg-mini-item {
+    border-left: 1px solid #DC1C2E;
+  }
+  .segmented-mini button.seg-mini-item.activo {
+    background: #DC1C2E;
+    color: white;
+    font-weight: 600;
+  }
+  .segmented-mini button.seg-mini-item .seg-mini-check { display: none; }
+  .segmented-mini button.seg-mini-item.activo .seg-mini-check { display: inline; }
+
+  /* Chip mini para "Con renta" — más compacto que chip-monoambiente para
+     que entre en la misma fila que el segmented. */
+  .chip-mini {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1px solid #DC1C2E;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 500;
+    font-size: 14px;
+    color: #DC1C2E;
+    background: white;
+    transition: all 0.15s;
+    vertical-align: middle;
+  }
+  .chip-mini input { display: none; }
+  .chip-mini .chip-mini-check { display: none; font-weight: 700; }
+  .chip-mini:has(input:checked) {
+    background: #DC1C2E;
+    color: white;
+    font-weight: 600;
+  }
+  .chip-mini:has(input:checked) .chip-mini-check { display: inline; }
+
   /* Subgrupo de min/max dentro de cada bloque */
   .subgrupo-titulo {
     font-size: 13px;
@@ -427,24 +494,24 @@
   <div class="card" id="cardEtiquetasExtra">
     <label>Etiquetas extra (opcional)</label>
     <div class="hint">Tildá si te interesa SOLO ese tipo. Si no, dejalo en blanco.</div>
-    <!-- 3 chips en una fila: Usado, A estrenar, Con renta / inversión.
-         Usado y A estrenar son mutuamente excluyentes (toggleEstadoPropiedad
-         apaga el otro al prender uno). Con renta se combina con cualquiera. -->
-    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-      <label class="chip-monoambiente">
-        <input type="checkbox" id="chipUsado" onchange="toggleEstadoPropiedad('usado')">
-        <span class="chip-monoambiente-check">✓</span>
-        <span>Usado</span>
-      </label>
-      <label class="chip-monoambiente">
-        <input type="checkbox" id="chipAEstrenar" onchange="toggleEstadoPropiedad('aestrenar')">
-        <span class="chip-monoambiente-check">✓</span>
-        <span>A estrenar</span>
-      </label>
-      <label class="chip-monoambiente">
+    <!-- Segmented Usado|A estrenar (un solo botón 2-mitades) + chip Con renta
+         en la misma fila. Usado/A estrenar son mutuamente excluyentes; Con
+         renta se combina con cualquiera. -->
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:center;">
+      <div class="segmented-mini" id="segEstadoPropiedad">
+        <button type="button" class="seg-mini-item" data-valor="usado" onclick="toggleEstadoPropiedad('usado')">
+          <span class="seg-mini-check">✓</span>
+          <span>Usado</span>
+        </button>
+        <button type="button" class="seg-mini-item" data-valor="aestrenar" onclick="toggleEstadoPropiedad('aestrenar')">
+          <span class="seg-mini-check">✓</span>
+          <span>A estrenar</span>
+        </button>
+      </div>
+      <label class="chip-mini">
         <input type="checkbox" id="chipConRenta">
-        <span class="chip-monoambiente-check">✓</span>
-        <span>Con renta / inversión</span>
+        <span class="chip-mini-check">✓</span>
+        <span>Con renta</span>
       </label>
     </div>
   </div>
@@ -635,13 +702,11 @@
         if (c) c.checked = true;
       });
     }
-    // Chips Usado / A estrenar — mutuamente excluyentes (uno o ninguno).
+    // Segmented Usado / A estrenar — mutuamente excluyentes (uno o ninguno).
     if (params.get('usado') === 'si') {
-      const c = document.getElementById('chipUsado');
-      if (c) c.checked = true;
+      activarSegmento('usado');
     } else if (params.get('aEstrenar') === 'si') {
-      const c = document.getElementById('chipAEstrenar');
-      if (c) c.checked = true;
+      activarSegmento('aestrenar');
     }
     if (params.get('conRenta') === 'si') {
       const c = document.getElementById('chipConRenta');
@@ -941,20 +1006,32 @@
   }
 
   /**
-   * Toggle Usado / A estrenar. Lógica idéntica a Android
-   * (NuevaBusquedaViewModel.toggleEstadoPropiedad): exclusión mutua entre los
-   * dos chips. Si tildás uno, se destilda el otro automáticamente. Si lo
-   * destildás manualmente, queda neutro (ninguno).
+   * Toggle segmented Usado / A estrenar. Lógica idéntica a Android
+   * (NuevaBusquedaViewModel.toggleEstadoPropiedad):
+   *  - Click en lado que NO está activo → ese se enciende, el otro se apaga
+   *  - Click en lado que YA está activo → se apaga (queda neutro)
    */
   function toggleEstadoPropiedad(valor) {
-    const chipUsado = document.getElementById('chipUsado');
-    const chipAEstrenar = document.getElementById('chipAEstrenar');
-    if (!chipUsado || !chipAEstrenar) return;
-    if (valor === 'usado' && chipUsado.checked) {
-      chipAEstrenar.checked = false;
-    } else if (valor === 'aestrenar' && chipAEstrenar.checked) {
-      chipUsado.checked = false;
+    const seg = document.getElementById('segEstadoPropiedad');
+    if (!seg) return;
+    const items = seg.querySelectorAll('.seg-mini-item');
+    const yaActivo = Array.from(items).find(it => it.classList.contains('activo'));
+    items.forEach(it => it.classList.remove('activo'));
+    if (!yaActivo || yaActivo.dataset.valor !== valor) {
+      const nuevo = Array.from(items).find(it => it.dataset.valor === valor);
+      if (nuevo) nuevo.classList.add('activo');
     }
+  }
+
+  /**
+   * Helper para pre-llenar el segmented desde URL params (sin lógica de toggle).
+   */
+  function activarSegmento(valor) {
+    const seg = document.getElementById('segEstadoPropiedad');
+    if (!seg) return;
+    seg.querySelectorAll('.seg-mini-item').forEach(it => it.classList.remove('activo'));
+    const nuevo = seg.querySelector(`.seg-mini-item[data-valor="${valor}"]`);
+    if (nuevo) nuevo.classList.add('activo');
   }
 
   /**
@@ -1114,9 +1191,11 @@
     const garantias = Array.from(document.querySelectorAll('input[name="garantia"]:checked'))
       .map(c => c.value)
       .join(",");
-    // Chips Usado / A estrenar — mutuamente excluyentes, leemos sus checkboxes.
-    const usado = document.getElementById('chipUsado')?.checked === true;
-    const aEstrenar = document.getElementById('chipAEstrenar')?.checked === true;
+    // Segmented Usado / A estrenar — leemos el item con clase "activo".
+    const segActivo = document.getElementById('segEstadoPropiedad')
+      ?.querySelector('.seg-mini-item.activo')?.dataset?.valor || '';
+    const usado = segActivo === 'usado';
+    const aEstrenar = segActivo === 'aestrenar';
     const conRenta = document.getElementById('chipConRenta')?.checked === true;
 
     // m² del terreno: si el toggle de hectáreas está activo, multiplicamos
