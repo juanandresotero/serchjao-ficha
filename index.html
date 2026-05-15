@@ -268,6 +268,47 @@
     display: inline;
   }
 
+  /* Segmented control 2-mitades para "Usado / A estrenar". Mismo look que
+     SegmentedButton de Material 3 — ambos lados pegados, el activo con
+     fondo rojo Remax. */
+  .segmented {
+    display: flex;
+    width: 100%;
+    border: 1.5px solid #DC1C2E;
+    border-radius: 10px;
+    overflow: hidden;
+    background: white;
+  }
+  .seg-item {
+    flex: 1;
+    background: white;
+    color: #DC1C2E;
+    border: none;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s;
+    font-family: inherit;
+    margin: 0;            /* override del button generico */
+    width: auto;          /* override del button generico que pone 100% */
+    border-radius: 0;     /* override */
+    margin-bottom: 0;     /* override del button generico */
+  }
+  .seg-item + .seg-item {
+    border-left: 1.5px solid #DC1C2E;
+  }
+  .seg-item.activo {
+    background: #DC1C2E;
+    color: white;
+  }
+  .seg-item .seg-check { display: none; font-weight: 700; }
+  .seg-item.activo .seg-check { display: inline; }
+
   /* Subgrupo de min/max dentro de cada bloque */
   .subgrupo-titulo {
     font-size: 13px;
@@ -324,7 +365,7 @@
 
   <div class="card">
     <label>Tipo de propiedad</label>
-    <div class="hint">Podés mezclar varios tipos si te sirve cualquiera. Tocando «Otros» aparecen cochera, local, depósito y terreno.</div>
+    <div class="hint">Casa y apartamento se pueden mezclar. Tocando «Otros» aparecen cochera, local, depósito y terreno.</div>
     <!-- Fila 1: Casa / Apto / Otros (3 chips ocupando el renglón completo) -->
     <div class="checkbox-group">
       <label class="checkbox-item">
@@ -427,18 +468,24 @@
   <div class="card" id="cardEtiquetasExtra">
     <label>Etiquetas extra (opcional)</label>
     <div class="hint">Tildá si te interesa SOLO ese tipo. Si no, dejalo en blanco.</div>
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
-      <label class="chip-monoambiente">
-        <input type="checkbox" id="chipAEstrenar">
-        <span class="chip-monoambiente-check">✓</span>
+    <!-- Segmented control 2-mitades: Usado vs A estrenar (mutuamente excluyentes).
+         Click en el lado activo lo apaga (vuelve a neutro). -->
+    <div class="segmented" id="segEstadoPropiedad" style="margin-top:8px;">
+      <button type="button" class="seg-item" data-valor="usado" onclick="toggleEstadoPropiedad('usado')">
+        <span class="seg-check">✓</span>
+        <span>Usado</span>
+      </button>
+      <button type="button" class="seg-item" data-valor="aestrenar" onclick="toggleEstadoPropiedad('aestrenar')">
+        <span class="seg-check">✓</span>
         <span>A estrenar</span>
-      </label>
-      <label class="chip-monoambiente">
-        <input type="checkbox" id="chipConRenta">
-        <span class="chip-monoambiente-check">✓</span>
-        <span>Con renta / inversión</span>
-      </label>
+      </button>
     </div>
+    <!-- Chip independiente para "Con renta / inversión" — se combina con cualquiera. -->
+    <label class="chip-monoambiente" style="margin-top:10px;">
+      <input type="checkbox" id="chipConRenta">
+      <span class="chip-monoambiente-check">✓</span>
+      <span>Con renta / inversión</span>
+    </label>
   </div>
 
   <div class="card tipo-residencial tipo-local tipo-deposito" id="cardMetrosCub">
@@ -627,9 +674,11 @@
         if (c) c.checked = true;
       });
     }
-    if (params.get('aEstrenar') === 'si') {
-      const c = document.getElementById('chipAEstrenar');
-      if (c) c.checked = true;
+    // Segmented Usado / A estrenar — mutuamente excluyentes.
+    if (params.get('usado') === 'si') {
+      seleccionarSegmentado('usado');
+    } else if (params.get('aEstrenar') === 'si') {
+      seleccionarSegmentado('aestrenar');
     }
     if (params.get('conRenta') === 'si') {
       const c = document.getElementById('chipConRenta');
@@ -929,6 +978,39 @@
   }
 
   /**
+   * Toggle del segmented control Usado / A estrenar. Lógica idéntica a la
+   * de Android (NuevaBusquedaViewModel.toggleEstadoPropiedad):
+   *  - Tocás un lado que NO está activo → se enciende ese, se apaga el otro
+   *  - Tocás un lado que YA está activo → se apaga (queda neutro, ninguno)
+   */
+  function toggleEstadoPropiedad(valor) {
+    const seg = document.getElementById('segEstadoPropiedad');
+    if (!seg) return;
+    const items = seg.querySelectorAll('.seg-item');
+    const yaActivo = Array.from(items).find(it => it.classList.contains('activo'));
+    items.forEach(it => it.classList.remove('activo'));
+    if (!yaActivo || yaActivo.dataset.valor !== valor) {
+      // Si no había activo, o el activo era OTRO, encendemos el clickeado.
+      const nuevo = Array.from(items).find(it => it.dataset.valor === valor);
+      if (nuevo) nuevo.classList.add('activo');
+    }
+    // Si el ya activo es el que tocaron, los `removerClass` de arriba lo apagaron.
+  }
+
+  /**
+   * Helper para pre-llenar el segmented Usado/A estrenar al abrir la ficha
+   * con URL params. Llama internamente al mismo toggle con la salvedad de
+   * que si está apagado lo enciende sin tocar otros.
+   */
+  function seleccionarSegmentado(valor) {
+    const seg = document.getElementById('segEstadoPropiedad');
+    if (!seg) return;
+    seg.querySelectorAll('.seg-item').forEach(it => it.classList.remove('activo'));
+    const nuevo = seg.querySelector(`.seg-item[data-valor="${valor}"]`);
+    if (nuevo) nuevo.classList.add('activo');
+  }
+
+  /**
    * Toggle del chip Monoambiente. Cuando se activa: marca Apto, deshabilita
    * el campo dormitorios y vacía su valor. Cuando se desactiva: re-habilita
    * el campo. Es la misma mecánica de la app Android.
@@ -1085,7 +1167,11 @@
     const garantias = Array.from(document.querySelectorAll('input[name="garantia"]:checked'))
       .map(c => c.value)
       .join(",");
-    const aEstrenar = document.getElementById('chipAEstrenar')?.checked === true;
+    // Segmented Usado / A estrenar — leemos el item con clase "activo".
+    const segEstado = document.getElementById('segEstadoPropiedad');
+    const segActivo = segEstado?.querySelector('.seg-item.activo')?.dataset?.valor || '';
+    const usado = segActivo === 'usado';
+    const aEstrenar = segActivo === 'aestrenar';
     const conRenta = document.getElementById('chipConRenta')?.checked === true;
 
     // m² del terreno: si el toggle de hectáreas está activo, multiplicamos
@@ -1122,6 +1208,7 @@
       metodo: metodo ? metodo.value : "",
       garantias: garantias,
       aEstrenar: aEstrenar ? "si" : "",
+      usado: usado ? "si" : "",
       conRenta: conRenta ? "si" : "",
       pedidos: document.getElementById('pedidos').value.trim(),
       link: document.getElementById('link').value.trim()
@@ -1154,6 +1241,7 @@
     if (d.moneda)         params.set('moneda', d.moneda);
     if (d.garantias)      params.set('garantias', d.garantias);
     if (d.aEstrenar)      params.set('aEstrenar', d.aEstrenar);
+    if (d.usado)          params.set('usado', d.usado);
     if (d.conRenta)       params.set('conRenta', d.conRenta);
     if (d.pedidos)        params.set('pedidos', d.pedidos);
     if (d.link)           params.set('link', d.link);
