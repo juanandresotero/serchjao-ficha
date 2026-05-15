@@ -269,20 +269,23 @@
   }
 
   /* Segmented control 2-mitades CHICO (wrap-content) para Usado | A estrenar.
-     Convive en la misma fila con el chip Con renta. */
+     Altura fija de 32px para que match con el chip-mini de al lado. */
   .segmented-mini {
     display: inline-flex;
+    height: 32px;
     border: 1px solid #DC1C2E;
     border-radius: 8px;
     overflow: hidden;
     background: white;
     vertical-align: middle;
+    box-sizing: border-box;
   }
   .segmented-mini button.seg-mini-item {
     background: white;
     color: #DC1C2E;
     border: none;
-    padding: 6px 12px;
+    padding: 0 12px;
+    height: 100%;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -296,6 +299,7 @@
     border-radius: 0;
     margin-bottom: 0;
     transition: all 0.15s;
+    box-sizing: border-box;
   }
   .segmented-mini button.seg-mini-item + button.seg-mini-item {
     border-left: 1px solid #DC1C2E;
@@ -308,13 +312,14 @@
   .segmented-mini button.seg-mini-item .seg-mini-check { display: none; }
   .segmented-mini button.seg-mini-item.activo .seg-mini-check { display: inline; }
 
-  /* Chip mini para "Con renta" — más compacto que chip-monoambiente para
-     que entre en la misma fila que el segmented. */
+  /* Chip mini para "Con renta" — misma altura (32px) que el segmented para
+     alinear bien en la misma fila. */
   .chip-mini {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 12px;
+    padding: 0 12px;
+    height: 32px;
     border: 1px solid #DC1C2E;
     border-radius: 8px;
     cursor: pointer;
@@ -325,6 +330,7 @@
     background: white;
     transition: all 0.15s;
     vertical-align: middle;
+    box-sizing: border-box;
   }
   .chip-mini input { display: none; }
   .chip-mini .chip-mini-check { display: none; font-weight: 700; }
