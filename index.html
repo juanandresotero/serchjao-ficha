@@ -268,25 +268,25 @@
     display: inline;
   }
 
-  /* Segmented control 2-mitades CHICO (wrap-content) para Usado | A estrenar.
-     Altura fija de 32px para que match con el chip-mini de al lado. */
+  /* Segmented control 2-mitades para Usado | A estrenar. Mismo estilo
+     que .checkbox-item (Casa/Apto): borde gris cuando inactivo, fondo
+     rosa claro + borde rojo cuando activo. NO resaltado. */
   .segmented-mini {
-    display: inline-flex;
-    height: 32px;
-    border: 1px solid #DC1C2E;
-    border-radius: 8px;
+    display: flex;
+    flex: 1;
+    border: 1.5px solid #d2d2d7;
+    border-radius: 10px;
     overflow: hidden;
     background: white;
-    vertical-align: middle;
     box-sizing: border-box;
   }
   .segmented-mini button.seg-mini-item {
+    flex: 1;
     background: white;
-    color: #DC1C2E;
+    color: #1d1d1f;
     border: none;
-    padding: 0 12px;
-    height: 100%;
-    font-size: 14px;
+    padding: 10px 12px;
+    font-size: 15px;
     font-weight: 500;
     cursor: pointer;
     display: inline-flex;
@@ -302,41 +302,41 @@
     box-sizing: border-box;
   }
   .segmented-mini button.seg-mini-item + button.seg-mini-item {
-    border-left: 1px solid #DC1C2E;
+    border-left: 1.5px solid #d2d2d7;
   }
   .segmented-mini button.seg-mini-item.activo {
-    background: #DC1C2E;
-    color: white;
+    background: #ffe5e8;
+    color: #DC1C2E;
     font-weight: 600;
   }
   .segmented-mini button.seg-mini-item .seg-mini-check { display: none; }
   .segmented-mini button.seg-mini-item.activo .seg-mini-check { display: inline; }
 
-  /* Chip mini para "Con renta" — misma altura (32px) que el segmented para
-     alinear bien en la misma fila. */
+  /* Chip "Con renta" — idéntico a .checkbox-item para uniformidad. */
   .chip-mini {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 0 12px;
-    height: 32px;
-    border: 1px solid #DC1C2E;
-    border-radius: 8px;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 14px;
+    flex: 1;
+    border: 1.5px solid #d2d2d7;
+    border-radius: 10px;
     cursor: pointer;
     user-select: none;
     font-weight: 500;
-    font-size: 14px;
-    color: #DC1C2E;
+    font-size: 15px;
+    color: #1d1d1f;
     background: white;
     transition: all 0.15s;
-    vertical-align: middle;
     box-sizing: border-box;
   }
   .chip-mini input { display: none; }
   .chip-mini .chip-mini-check { display: none; font-weight: 700; }
   .chip-mini:has(input:checked) {
-    background: #DC1C2E;
-    color: white;
+    background: #ffe5e8;
+    border-color: #DC1C2E;
+    color: #DC1C2E;
     font-weight: 600;
   }
   .chip-mini:has(input:checked) .chip-mini-check { display: inline; }
@@ -496,15 +496,16 @@
     </div>
   </div>
 
-  <!-- Etiquetas extra: filtros booleanos opcionales. No dependen del tipo. -->
+  <!-- Etiquetas extra: filtros booleanos opcionales. Se ocultan vía JS si
+       la búsqueda es solo terreno/lote o galpón/depósito. -->
   <div class="card" id="cardEtiquetasExtra">
     <label>Etiquetas extra (opcional)</label>
     <div class="hint">Tildá si te interesa SOLO ese tipo. Si no, dejalo en blanco.</div>
     <!-- Segmented Usado|A estrenar (un solo botón 2-mitades) + chip Con renta
          en la misma fila. Usado/A estrenar son mutuamente excluyentes; Con
-         renta se combina con cualquiera. -->
-    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:center;">
-      <div class="segmented-mini" id="segEstadoPropiedad">
+         renta se combina con cualquiera. Mismo estilo que Casa/Apto. -->
+    <div style="display:flex; gap:8px; margin-top:8px; align-items:stretch;">
+      <div class="segmented-mini" id="segEstadoPropiedad" style="flex:2;">
         <button type="button" class="seg-mini-item" data-valor="usado" onclick="toggleEstadoPropiedad('usado')">
           <span class="seg-mini-check">✓</span>
           <span>Usado</span>
@@ -514,7 +515,7 @@
           <span>A estrenar</span>
         </button>
       </div>
-      <label class="chip-mini">
+      <label class="chip-mini" style="flex:1;">
         <input type="checkbox" id="chipConRenta">
         <span class="chip-mini-check">✓</span>
         <span>Con renta</span>
@@ -1105,6 +1106,14 @@
     // Cochera obligatoria — solo residencial sin monoambiente
     document.getElementById('cardCochera').style.display =
       (esResidencial && !esMonoambiente && !esCochera) ? '' : 'none';
+
+    // Etiquetas extra (Usado / A estrenar / Con renta) — NO se muestran si
+    // la búsqueda es solo terreno/lote o galpón/depósito (no tienen sentido).
+    const cardEtiq = document.getElementById('cardEtiquetasExtra');
+    if (cardEtiq) {
+      cardEtiq.style.display =
+        (esResidencial || esLocal || esCochera) ? '' : 'none';
+    }
 
     // m² cubiertos — residencial, local, depósito
     document.getElementById('cardMetrosCub').style.display =
