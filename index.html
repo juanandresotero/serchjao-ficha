@@ -496,16 +496,17 @@
     </div>
   </div>
 
-  <!-- Etiquetas extra: filtros booleanos opcionales. Se ocultan vía JS si
-       la búsqueda es solo terreno/lote o galpón/depósito. -->
+  <!-- Etiquetas extra: filtros booleanos opcionales. No dependen del tipo. -->
   <div class="card" id="cardEtiquetasExtra">
     <label>Etiquetas extra (opcional)</label>
     <div class="hint">Tildá si te interesa SOLO ese tipo. Si no, dejalo en blanco.</div>
-    <!-- Segmented Usado|A estrenar (un solo botón 2-mitades) + chip Con renta
-         en la misma fila. Usado/A estrenar son mutuamente excluyentes; Con
-         renta se combina con cualquiera. Mismo estilo que Casa/Apto. -->
-    <div style="display:flex; gap:8px; margin-top:8px; align-items:stretch;">
-      <div class="segmented-mini" id="segEstadoPropiedad" style="flex:2;">
+    <!-- Segmented Usado|A estrenar + chips Con renta y Varias unidades.
+         Usado/A estrenar son mutuamente excluyentes; los chips de inversión
+         se combinan con cualquiera. Varias unidades = propiedades con más
+         de una vivienda en el mismo padrón (ej. casa al frente + apto al
+         fondo). -->
+    <div style="display:flex; gap:8px; margin-top:8px; align-items:stretch; flex-wrap:wrap;">
+      <div class="segmented-mini" id="segEstadoPropiedad" style="flex:2; min-width:180px;">
         <button type="button" class="seg-mini-item" data-valor="usado" onclick="toggleEstadoPropiedad('usado')">
           <span class="seg-mini-check">✓</span>
           <span>Usado</span>
@@ -515,11 +516,20 @@
           <span>A estrenar</span>
         </button>
       </div>
-      <label class="chip-mini" style="flex:1;">
+      <label class="chip-mini" style="flex:1; min-width:120px;">
         <input type="checkbox" id="chipConRenta">
         <span class="chip-mini-check">✓</span>
         <span>Con renta</span>
       </label>
+      <label class="chip-mini" style="flex:1; min-width:140px;">
+        <input type="checkbox" id="chipVariasUnidades">
+        <span class="chip-mini-check">✓</span>
+        <span>Varias unidades</span>
+      </label>
+    </div>
+    <div class="hint" style="margin-top:6px;">
+      "Varias unidades" = propiedades con más de una vivienda en el mismo
+      padrón (ej. casa al frente + apartamento al fondo).
     </div>
   </div>
 
@@ -717,6 +727,10 @@
     }
     if (params.get('conRenta') === 'si') {
       const c = document.getElementById('chipConRenta');
+      if (c) c.checked = true;
+    }
+    if (params.get('variasUnidades') === 'si') {
+      const c = document.getElementById('chipVariasUnidades');
       if (c) c.checked = true;
     }
     if (params.has('pedidos')) document.getElementById('pedidos').value = params.get('pedidos');
@@ -1107,8 +1121,9 @@
     document.getElementById('cardCochera').style.display =
       (esResidencial && !esMonoambiente && !esCochera) ? '' : 'none';
 
-    // Etiquetas extra (Usado / A estrenar / Con renta) — NO se muestran si
-    // la búsqueda es solo terreno/lote o galpón/depósito (no tienen sentido).
+    // Etiquetas extra (Usado / A estrenar / Con renta / Varias unidades)
+    // — NO se muestran si la búsqueda es solo terreno/lote o galpón/depósito
+    // (no tienen sentido).
     const cardEtiq = document.getElementById('cardEtiquetasExtra');
     if (cardEtiq) {
       cardEtiq.style.display =
@@ -1212,6 +1227,7 @@
     const usado = segActivo === 'usado';
     const aEstrenar = segActivo === 'aestrenar';
     const conRenta = document.getElementById('chipConRenta')?.checked === true;
+    const variasUnidades = document.getElementById('chipVariasUnidades')?.checked === true;
 
     // m² del terreno: si el toggle de hectáreas está activo, multiplicamos
     // por 10.000 para guardar siempre en m² (Android espera m²).
@@ -1249,6 +1265,7 @@
       aEstrenar: aEstrenar ? "si" : "",
       usado: usado ? "si" : "",
       conRenta: conRenta ? "si" : "",
+      variasUnidades: variasUnidades ? "si" : "",
       pedidos: document.getElementById('pedidos').value.trim(),
       link: document.getElementById('link').value.trim()
     };
@@ -1282,6 +1299,7 @@
     if (d.aEstrenar)      params.set('aEstrenar', d.aEstrenar);
     if (d.usado)          params.set('usado', d.usado);
     if (d.conRenta)       params.set('conRenta', d.conRenta);
+    if (d.variasUnidades) params.set('variasUnidades', d.variasUnidades);
     if (d.pedidos)        params.set('pedidos', d.pedidos);
     if (d.link)           params.set('link', d.link);
     return baseUrl + '?' + params.toString();
